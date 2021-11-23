@@ -3,9 +3,16 @@ Type: Package
 Title: What the package does (short line)
 Version: 1.0
 Date: 2021-11-19
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
-Description: More about what it does (maybe more than one line)
-License: What license is it under?
+Author: Junhui Cai, Dan Yang, Wu Zhu, Haipeng Shen, Linda Zhao
+Maintainer: Junhui Cai <junhui@wharton.upenn.edu>
+Description: The SuperCENT supervised centrality estimation methodology described in "Network Regression and Supervised Centrality Estimation"."
+License: 
 Imports: Rcpp (>= 1.0.7)
 LinkingTo: Rcpp, RcppArmadillo
+RoxygenNote: 7.1.2
+Suggests: 
+    rmarkdown,
+    knitr
+VignetteBuilder: knitr
+URL: https://github.com/cccfran/SuperCENT
+BugReports: https://github.com/cccfran/SuperCENT/issues
