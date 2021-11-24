@@ -220,12 +220,12 @@ k-fold cross-validation to choose the tuning parameter \(\lambda\).</p>
     <pre class="examples"><div class='input'><span class='va'>n</span> <span class='op'>&lt;-</span> <span class='fl'>100</span>
 <span class='va'>p</span> <span class='op'>&lt;-</span> <span class='fl'>3</span>
 <span class='va'>sigmaa</span> <span class='op'>&lt;-</span> <span class='fl'>1</span>
-<span class='va'>sigmaa</span> <span class='op'>&lt;-</span> <span class='fl'>1e-5</span>
+<span class='va'>sigmay</span> <span class='op'>&lt;-</span> <span class='fl'>1e-5</span>
 <span class='va'>A</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/matrix.html'>matrix</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/stats/Normal.html'>rnorm</a></span><span class='op'>(</span><span class='va'>n</span><span class='op'>^</span><span class='fl'>2</span>, sd <span class='op'>=</span> <span class='va'>sigmaa</span><span class='op'>)</span>, nrow <span class='op'>=</span> <span class='va'>n</span><span class='op'>)</span>
 <span class='va'>X</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/matrix.html'>matrix</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/stats/Normal.html'>rnorm</a></span><span class='op'>(</span><span class='va'>n</span><span class='op'>*</span><span class='va'>p</span><span class='op'>)</span>, nrow <span class='op'>=</span> <span class='va'>n</span>, ncol <span class='op'>=</span> <span class='va'>p</span><span class='op'>)</span>
 <span class='va'>y</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/Normal.html'>rnorm</a></span><span class='op'>(</span><span class='va'>n</span>, sd <span class='op'>=</span> <span class='va'>sigmay</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; <span class='error'>Error in rnorm(n, sd = sigmay): object 'sigmay' not found</span></div><div class='input'><span class='va'>ret</span> <span class='op'>&lt;-</span> <span class='fu'>cv.supercent</span><span class='op'>(</span><span class='va'>A</span>, <span class='va'>X</span>, <span class='va'>y</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; <span class='error'>Error in cv.supercent(A, X, y): object 'y' not found</span></div></pre>
+<span class='va'>ret</span> <span class='op'>&lt;-</span> <span class='fu'>cv.supercent</span><span class='op'>(</span><span class='va'>A</span>, <span class='va'>X</span>, <span class='va'>y</span><span class='op'>)</span>
+</div><div class='output co'>#&gt; [1] "SuperCENT"</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">

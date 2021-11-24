@@ -46,7 +46,7 @@ centralities and other covariates.
 n <- 100
 p <- 3
 sigmaa <- 1
-sigmaa <- 1e-5
+sigmay <- 1e-5
 A <- matrix(rnorm(n^2, sd = sigmaa), nrow = n)
 X <- matrix(rnorm(n*p), nrow = n, ncol = p)
 y <- rnorm(n, sd = sigmay)

@@ -95,7 +95,7 @@ unobserved_shift_back <- function(xx, weights) {
 #' n <- 100
 #' p <- 3
 #' sigmaa <- 1
-#' sigmaa <- 1e-5
+#' sigmay <- 1e-5
 #' A <- matrix(rnorm(n^2, sd = sigmaa), nrow = n)
 #' X <- matrix(rnorm(n*p), nrow = n, ncol = p)
 #' y <- rnorm(n, sd = sigmay)
@@ -207,7 +207,7 @@ lopt_estimate <- function(A, X, y, weights) {
 #' n <- 100
 #' p <- 3
 #' sigmaa <- 1
-#' sigmaa <- 1e-5
+#' sigmay <- 1e-5
 #' A <- matrix(rnorm(n^2, sd = sigmaa), nrow = n)
 #' X <- matrix(rnorm(n*p), nrow = n, ncol = p)
 #' y <- rnorm(n, sd = sigmay)
@@ -296,7 +296,7 @@ supercent <- function(A, X, y, l = NULL, tol = 1e-4, max_iter = 200,
 #' n <- 100
 #' p <- 3
 #' sigmaa <- 1
-#' sigmaa <- 1e-5
+#' sigmay <- 1e-5
 #' A <- matrix(rnorm(n^2, sd = sigmaa), nrow = n)
 #' X <- matrix(rnorm(n*p), nrow = n, ncol = p)
 #' y <- rnorm(n, sd = sigmay)
