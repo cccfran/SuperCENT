@@ -73,3 +73,11 @@ The SuperCENT methodology that simultaneously solves
 the centrality estimation and regression using
 k-fold cross-validation to choose the tuning parameter \eqn{\lambda}.
 }
+\examples{
+n <- 100
+p <- 3
+A <- matrix(rnorm(n^2, sd = sigmaa), nrow = n)
+X <- matrix(rnorm(n*p), nrow = n, ncol = p)
+y <- rnorm(n, sd = sigmay)
+ret <- cv.supercent(A, X, y)
+}

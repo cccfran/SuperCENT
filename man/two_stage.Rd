@@ -42,3 +42,11 @@ The two-stage procedure first estimates the centralities
 then regress the outcome of interest to the estimated 
 centralities and other covariates.
 }
+\examples{
+n <- 100
+p <- 3
+A <- matrix(rnorm(n^2, sd = sigmaa), nrow = n)
+X <- matrix(rnorm(n*p), nrow = n, ncol = p)
+y <- rnorm(n, sd = sigmay)
+ret <- two_stage(A, X, y)
+}

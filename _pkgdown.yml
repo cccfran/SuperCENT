@@ -1,6 +1,8 @@
 title: SuperCENT
+desc: Main
 url: https://github.com/cccfran/SuperCENT/
 template:
+  bootstrap: 5
   params:
     bootswatch: flatly
 reference:

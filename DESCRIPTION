@@ -1,6 +1,6 @@
 Package: SuperCENT
 Type: Package
-Title: What the package does (short line)
+Title: Supervised Centrality Estimation
 Version: 1.0
 Date: 2021-11-19
 Author: Junhui Cai, Dan Yang, Wu Zhu, Haipeng Shen, Linda Zhao

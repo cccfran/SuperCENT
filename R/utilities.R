@@ -91,6 +91,13 @@ unobserved_shift_back <- function(xx, weights) {
 #'   \item{method}{The estimation method: two_stage}
 #'   \item{...}{Auxiliary output from \code{lm.fit}}
 #' }
+#' @examples 
+#' n <- 100
+#' p <- 3
+#' A <- matrix(rnorm(n^2, sd = sigmaa), nrow = n)
+#' X <- matrix(rnorm(n*p), nrow = n, ncol = p)
+#' y <- rnorm(n, sd = sigmay)
+#' ret <- two_stage(A, X, y)
 two_stage <- function(A, X, y, r = 1, scaled = 1, weights = rep(1, length(y)), ...) {
   
   n = nrow(A)
@@ -194,6 +201,13 @@ lopt_estimate <- function(A, X, y, weights) {
 #'   the two consecutive iterations}
 #'   \item{method}{The estimation method: supercent}
 #' }
+#' @examples 
+#' n <- 100
+#' p <- 3
+#' A <- matrix(rnorm(n^2, sd = sigmaa), nrow = n)
+#' X <- matrix(rnorm(n*p), nrow = n, ncol = p)
+#' y <- rnorm(n, sd = sigmay)
+#' ret <- supercent(A, X, y)
 supercent <- function(A, X, y, l = NULL, tol = 1e-4, max_iter = 200, 
                       weights = rep(1, length(y)), verbose = 0, ...) {
   
@@ -274,6 +288,13 @@ supercent <- function(A, X, y, l = NULL, tol = 1e-4, max_iter = 200,
 #'   the two consecutive iterations}
 #'   \item{method}{The estimation method: supercent}
 #' }
+#' @examples 
+#' n <- 100
+#' p <- 3
+#' A <- matrix(rnorm(n^2, sd = sigmaa), nrow = n)
+#' X <- matrix(rnorm(n*p), nrow = n, ncol = p)
+#' y <- rnorm(n, sd = sigmay)
+#' ret <- cv.supercent(A, X, y)
 cv.supercent <- function(A, X, y, 
                          l = NULL, lrange = 2^4, gap = 2,
                          folds = 10, tol = 1e-4, max_iter = 200, 
