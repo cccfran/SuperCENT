@@ -11,49 +11,6 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// rcpparma_hello_world
-arma::mat rcpparma_hello_world();
-RcppExport SEXP _SuperCENT_rcpparma_hello_world() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(rcpparma_hello_world());
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpparma_outerproduct
-arma::mat rcpparma_outerproduct(const arma::colvec& x);
-RcppExport SEXP _SuperCENT_rcpparma_outerproduct(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::colvec& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpparma_outerproduct(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpparma_innerproduct
-double rcpparma_innerproduct(const arma::colvec& x);
-RcppExport SEXP _SuperCENT_rcpparma_innerproduct(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::colvec& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpparma_innerproduct(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpparma_bothproducts
-Rcpp::List rcpparma_bothproducts(const arma::colvec& x);
-RcppExport SEXP _SuperCENT_rcpparma_bothproducts(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::colvec& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpparma_bothproducts(x));
-    return rcpp_result_gen;
-END_RCPP
-}
 // cent
 Rcpp::List cent(const arma::mat& A, const arma::mat& X, const arma::colvec& y, double l1, double l2, double tol, int max_iter, int verbose, int scaled);
 RcppExport SEXP _SuperCENT_cent(SEXP ASEXP, SEXP XSEXP, SEXP ySEXP, SEXP l1SEXP, SEXP l2SEXP, SEXP tolSEXP, SEXP max_iterSEXP, SEXP verboseSEXP, SEXP scaledSEXP) {
@@ -337,10 +294,6 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_SuperCENT_rcpparma_hello_world", (DL_FUNC) &_SuperCENT_rcpparma_hello_world, 0},
-    {"_SuperCENT_rcpparma_outerproduct", (DL_FUNC) &_SuperCENT_rcpparma_outerproduct, 1},
-    {"_SuperCENT_rcpparma_innerproduct", (DL_FUNC) &_SuperCENT_rcpparma_innerproduct, 1},
-    {"_SuperCENT_rcpparma_bothproducts", (DL_FUNC) &_SuperCENT_rcpparma_bothproducts, 1},
     {"_SuperCENT_cent", (DL_FUNC) &_SuperCENT_cent, 9},
     {"_SuperCENT_cv_oracle_cent", (DL_FUNC) &_SuperCENT_cv_oracle_cent, 19},
     {"_SuperCENT_cv_cent", (DL_FUNC) &_SuperCENT_cv_cent, 15},

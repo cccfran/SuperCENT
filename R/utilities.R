@@ -1,5 +1,3 @@
-library(Matrix)
-
 vec_norm <- function(x) {sqrt(sum(x^2))}
 spec_norm_diff <- function(x, y, scale = T) {
   if(length(x) != length(y)) stop('x and y are of different length')
@@ -65,6 +63,34 @@ unobserved_shift_back <- function(xx, weights) {
   xx_tmp
 }
 
+#' The two-stage procedure
+#' 
+#' The two-stage procedure first estimates the centralities
+#' then regress the outcome of interest to the estimated 
+#' centralities and other covariates.
+#' 
+#' @param A The adjacency matrix of the input network
+#' @param X The design matrix 
+#' @param y The response vector
+#' @param r The rank of the input adjacency matrix
+#' @param scaled Scale \eqn{u} and \eqn{v} of norm \eqn{\sqrt{n}}
+#' @param weights The weight vector for each observation in (X,y)
+#' @return Output a \code{two_stage} object
+#' \describe{
+#'   \item{u}{The estimated hub centrality}
+#'   \item{v}{The estimated authority centrality}
+#'   \item{beta}{The scaled estimated regression coeffcients}
+#'   \item{coefficients}{The original estimated regression coeffcients without scaling.}
+#'   \item{residuals}{The residuals of the regression}
+#'   \item{fitted.values}{The predicted response}
+#'   \item{epsa}{The estimated \eqn{\sigma_a}}
+#'   \item{epsy}{The estimated \eqn{\sigma_y}}
+#'   \item{A}{The adjacency matrix of the input network}
+#'   \item{X}{The input design matrix}
+#'   \item{y}{The input response}
+#'   \item{method}{The estimation method: two_stage}
+#'   \item{...}{Auxiliary output from \code{lm.fit}}
+#' }
 two_stage <- function(A, X, y, r = 1, scaled = 1, weights = rep(1, length(y)), ...) {
   
   n = nrow(A)
@@ -134,6 +160,40 @@ lopt_estimate <- function(A, X, y, weights) {
   l
 }
 
+#' SuperCENT with fixed \eqn{\lambda}
+#' 
+#' The SuperCENT methodology that simultaneously solves 
+#' the centrality estimation and regression given a fixed \eqn{\lambda}.
+#' 
+#' @param A The input network
+#' @param X The design matrix 
+#' @param y The response vector
+#' @param l The tuning parameter of the penalty
+#' @param folds The number of fold for cross-validation
+#' @param tol The precision tolerance to stop
+#' @param max_iter The maximum iteration
+#' @param weights The weight vector for each observation in (X,y)
+#' @param verbose Output detailed message at different levels
+#' @return Output a \code{supercent} object
+#' \describe{
+#'   \item{d}{The estimated \eqn{d}}
+#'   \item{u}{The estimated hub centrality}
+#'   \item{v}{The estimated authority centrality}
+#'   \item{beta}{The scaled estimated regression coeffcients}
+#'   \item{l}{The tuning parameter \eqn{\lambda}}
+#'   \item{residuals}{The residuals of the regression}
+#'   \item{fitted.values}{The predicted response}
+#'   \item{epsa}{The estimated \eqn{\sigma_a}}
+#'   \item{epsy}{The estimated \eqn{\sigma_y}}
+#'   \item{A}{The adjacency matrix of the input network}
+#'   \item{X}{The input design matrix}
+#'   \item{y}{The input response}
+#'   \item{iter}{The grid of the tuning parameter}
+#'   \item{max_iter}{The maximum iteration}
+#'   \item{u_distance}{The sequence of differences of \eqn{\hat{u}} between 
+#'   the two consecutive iterations}
+#'   \item{method}{The estimation method: supercent}
+#' }
 supercent <- function(A, X, y, l = NULL, tol = 1e-4, max_iter = 200, 
                       weights = rep(1, length(y)), verbose = 0, ...) {
   
@@ -173,7 +233,47 @@ supercent <- function(A, X, y, l = NULL, tol = 1e-4, max_iter = 200,
   ret
 }
 
-
+#' SuperCENT k-fold cross-validation
+#' 
+#' The SuperCENT methodology that simultaneously solves
+#' the centrality estimation and regression using
+#' k-fold cross-validation to choose the tuning parameter \eqn{\lambda}.
+#' 
+#' @param A The input network
+#' @param X The design matrix 
+#' @param y The response vector
+#' @param l The initial tuning parameter
+#' @param lrange The search range of the tuning parameter
+#' @param gap The search gap of the tuning parameter
+#' @param folds The number of fold for cross-validation
+#' @param tol The precision tolerance to stop
+#' @param max_iter The maximum iteration
+#' @param weights The weight vector for each observation in (X,y)
+#' @param verbose Output detailed message at different levels
+#' @return Output a \code{cv.supercent} object
+#' \describe{
+#'   \item{d}{The estimated \eqn{d}}
+#'   \item{u}{The estimated hub centrality}
+#'   \item{v}{The estimated authority centrality}
+#'   \item{beta}{The scaled estimated regression coeffcients}
+#'   \item{l}{The tuning parameter \eqn{\lambda}}
+#'   \item{residuals}{The residuals of the regression}
+#'   \item{fitted.values}{The predicted response}
+#'   \item{epsa}{The estimated \eqn{\sigma_a}}
+#'   \item{epsy}{The estimated \eqn{\sigma_y}}
+#'   \item{A}{The adjacency matrix of the input network}
+#'   \item{X}{The input design matrix}
+#'   \item{y}{The input response}
+#'   \item{l_sequence}{The grid of the tuning parameter}
+#'   \item{beta_cvs}{The estimated regression coefficients of \code{l_sequence}}
+#'   \item{mse_cv}{The cross-validation MSEs of \code{l_sequence}}
+#'   \item{cv_index}{The fold indices (X,y)}
+#'   \item{iter}{The grid of the tuning parameter}
+#'   \item{max_iter}{The maximum iteration}
+#'   \item{u_distance}{The sequence of differences of \eqn{\hat{u}} between 
+#'   the two consecutive iterations}
+#'   \item{method}{The estimation method: supercent}
+#' }
 cv.supercent <- function(A, X, y, 
                          l = NULL, lrange = 2^4, gap = 2,
                          folds = 10, tol = 1e-4, max_iter = 200, 
@@ -340,7 +440,7 @@ predict_supervised <- function(ret, A, X, weights) {
   v_test <- vv[(n_obs+1):n]/v_train_norm*sqrt(n_obs); 
   
   cbind(X, u_test, v_test) %*% ret$beta
-
+  
 }
 
 K.mat <- function(m,n)
@@ -499,7 +599,7 @@ confint_all <- function(ret, alpha = 0.05, method = "lr") {
   
   est <- c(ret$u, ret$v, ret$beta)
   param <- c(paste0("u", rownames(ret$A)), paste0("v", colnames(ret$A)),
-            "betau", "betav", paste0("betax", 1:p))
+             "betau", "betav", paste0("betax", 1:p))
   # ci <- data.frame(param = c(paste0("u", 1:n), paste0("v", 1:n),
   #                            "betau", "betav", paste0("betax", 1:p)),
   #                  estimate = est,
@@ -541,6 +641,19 @@ epsy_hat <- function(ret) {
   sqrt(sum(ret$residuals^2)/(n - p))
 }
 
+#' Confidence interval and summary table of \eqn{\beta}
+#' 
+#' This function returns the confidence interval or 
+#' the summary table of \code{two_stage}, \code{supercent}
+#' and \code{cv.supercent} object.
+#' 
+#' @param ret A  \code{two_stage}, \code{supercent}
+#' and \code{cv.supercent} object
+#' @param alpha The level of type-I error
+#' @param ci If TRUE, return the confidence interval;
+#' if FALSE, return the summary table.
+#' @return Output a data.frame of confidence interval
+#' or summary table.
 confint <- function(ret, alpha = 0.05, ci = F) {
   
   n <- length(ret$y)
@@ -548,7 +661,7 @@ confint <- function(ret, alpha = 0.05, ci = F) {
   betahat <- ret$beta
   # for oracle
   if(!is.null(ret$beta_hat)) betahat <- ret$beta_hat
-
+  
   sduv <- sqrt(rate_betauv_two_stage(X = ret$X, 
                                      u = ret$u, 
                                      v = ret$v, 
@@ -609,7 +722,22 @@ confint <- function(ret, alpha = 0.05, ci = F) {
   }
 }
 
-confint_A <- function(ret, ci = F, A0 = NULL) {
+#' Confidence interval and summary table of \eqn{A}
+#' 
+#' This function returns the confidence interval or 
+#' the summary table for the adjacency matrix of 
+#' \code{two_stage}, \code{supercent}
+#' and \code{cv.supercent} object.
+#' 
+#' @param ret A  \code{two_stage}, \code{supercent}
+#' and \code{cv.supercent} object
+#' @param alpha The level of type-I error
+#' @param ci If TRUE, return the confidence interval;
+#' if FALSE, return the summary table.
+#' @param A0 The true adjacency matrix
+#' @return Output a data.frame of confidence interval
+#' or summary table.
+confint_A <- function(ret, alpha = 0.05, ci = F, A0 = NULL) {
   
   a_vec <- c(ret$d*ret$u%*%t(ret$v))
   if(!is.null(ret$A_hat)) a_vec <- c(ret$A_hat)
@@ -618,8 +746,8 @@ confint_A <- function(ret, ci = F, A0 = NULL) {
   
   if(grepl("two_stage", ret$method)) {
     sda <- sqrt(var_mat_A_two_stage(sigmaa2 = ret$epsa^2, 
-                                   u = ret$u, v= ret$v, 
-                                   n = n_train))
+                                    u = ret$u, v= ret$v, 
+                                    n = n_train))
   }
   
   if(grepl("lr", ret$method) | ret$method == "oracle") {
@@ -630,15 +758,15 @@ confint_A <- function(ret, ci = F, A0 = NULL) {
                                     u = ret$u, v= ret$v, n = n_train))
   }
   
-  interval <- data.table(
+  interval <- data.frame(
     lower = a_vec - sda*qnorm(1-alpha/2),
     upper = a_vec + sda*qnorm(1-alpha/2),
     lower_FWER = a_vec - sda*qnorm(1-alpha/n_train^2/2),
     upper_FWER = a_vec + sda*qnorm(1-alpha/n_train^2/2)
   )
-
-  interval[, i := rep(1:n_train, n_train)]
-  interval[, j := rep(1:n_train, eac = n_train)]
+  
+  interval$i <- rep(1:n_train, n_train)
+  interval$j <- rep(1:n_train, eac = n_train)
   
   tval <- a_vec / sda
   pval <- 2*pnorm(-abs(tval))
@@ -662,13 +790,13 @@ confint_A <- function(ret, ci = F, A0 = NULL) {
   }
 }
 
-#' Variance of $\hat{a}^{ts}_{ij}$ ordered by column major
+#' Variance of \eqn{hat{a}^{ts}_{ij}} ordered by column major
 #' 
 #' @param sigmaa2 sigma_a^2
 #' @param u u vector
 #' @param v v vector
 #' @param n number of nodes
-#' @return A vector of variance of $\hat{a}^{ts}_{ij}$
+#' @return A vector of variance of \eqn{hat{a}^{ts}_{ij}}
 var_mat_A_two_stage <- function(sigmaa2, u, v, n) {
   
   I <- diag(1, nrow = n)
@@ -684,7 +812,7 @@ var_mat_A_two_stage <- function(sigmaa2, u, v, n) {
   
 }
 
-#' Variance of $\hat{a}_{ij}$ ordered by column major
+#' Variance of \eqn{hat{a}_{ij}} ordered by column major
 #' 
 #' @param X design matrix X
 #' @param l tuning parameter
@@ -693,7 +821,7 @@ var_mat_A_two_stage <- function(sigmaa2, u, v, n) {
 #' @param u u vector
 #' @param v v vector
 #' @param n number of nodes
-#' @return A vector of variance of $\hat{a}_{ij}$
+#' @return A vector of variance of \eqn{hat{a}_{ij}}
 var_mat_A_supercent <- function(X, l, d, beta0, sigmay2, sigmaa2, u, v, n) {
   
   n <- nrow(X)
@@ -796,7 +924,7 @@ l_optimal_lr <- function(d, beta0, sigmay2, sigmaa2, n, weights = rep(1, n))
   p <- length(beta0)
   betau <- beta0[p-1]
   betav <- beta0[p]
-
+  
   n*sigmay2/sigmaa2*n/n_obs
 }
 
@@ -859,7 +987,7 @@ rate_betauv_lr_2 <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n, l)
   diag(ret)
 }
 
-#' Variance of $\hat{\beta_u}$ and $\hat{\beta_v}$ ordered by column major
+#' Variance of \eqn{hat{\beta_u}} and \eqn{hat{\beta_v}} ordered by column major
 #' 
 #' @param X design matrix X
 #' @param u u vector
@@ -869,9 +997,9 @@ rate_betauv_lr_2 <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n, l)
 #' @param sigmay2 sigma_y^2
 #' @param sigmaa2 sigma_a^2
 #' @param n number of nodes
-#' @param output "uv", "u", "v" to select output for $\beta_u$ and/or $\beta_v$
+#' @param output "uv", "u", "v" to select output for \eqn{beta_u} and/or \eqn{beta_v}
 #' @param verbose print first and second term of the rate 
-#' @return A vector of rariance for $\hat{\beta_u}$ and $\hat{\beta_v}$
+#' @return A vector of rariance for \eqn{hat{\beta_u}} and \eqn{hat{\beta_v}}
 rate_betauv_two_stage <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n, 
                                   output = "uv", verbose = F) 
 {
@@ -928,7 +1056,7 @@ rate_betauv_two_stage <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n,
 rate_betauv_two_stage_check <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n) 
 {
   # check (305) = (311) = (312)
-
+  
   n <- nrow(X)
   k <- ncol(X)
   p <- length(beta0)

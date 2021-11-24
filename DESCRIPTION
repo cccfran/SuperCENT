@@ -7,7 +7,8 @@ Author: Junhui Cai, Dan Yang, Wu Zhu, Haipeng Shen, Linda Zhao
 Maintainer: Junhui Cai <junhui@wharton.upenn.edu>
 Description: The SuperCENT supervised centrality estimation methodology described in "Network Regression and Supervised Centrality Estimation"."
 License: 
-Imports: Rcpp (>= 1.0.7)
+Depends: irlba
+Imports: Rcpp (>= 1.0.7), pracma
 LinkingTo: Rcpp, RcppArmadillo
 RoxygenNote: 7.1.2
 Suggests: 

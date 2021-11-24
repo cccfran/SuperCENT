@@ -1,0 +1,19 @@
+title: SuperCENT
+url: https://github.com/cccfran/SuperCENT/
+template:
+  params:
+    bootswatch: flatly
+reference:
+- title: "Centrality and regression coefficient estimation"
+  desc: >
+    Functions for estimating centrality and regression coefficients.
+- contents:
+  - two_stage
+  - supercent
+  - cv.supercent
+- title: "Inference and summary"
+  desc: >
+    Functions for inference of the estimation objects.
+- contents:
+  - confint
+  - confint_A
