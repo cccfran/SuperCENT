@@ -18,6 +18,10 @@ int irlba_eigen (
 	const arma::mat& A,
 	int k);
 
+double spec_norm (
+	const arma::mat& A
+);
+
 int update_beta(const arma::mat& X,
 				const arma::colvec& u, 
 				const arma::colvec& v, 
@@ -1142,6 +1146,7 @@ int lr_(const arma::mat& A,
 
 	while(cond & (iter < max_iter)) {
 		u_old = u; v_old = v; beta_old = beta; d_old = d;
+
 		update_beta(X, u, v, y, beta);
 		d = update_d(A, u, v);
 		d /= pow(n, 2);
@@ -1152,11 +1157,12 @@ int lr_(const arma::mat& A,
 		if(verbose) {
 			std::cout << "\t\t" << iter << ": " << beta.t() << std::endl;
 			if(verbose == 3) {
-				std::cout << "\t\t" << "u: " << norm(u_old * u_old.t() - u * u.t(), 2)/n << "; v: " << norm(v_old * v_old.t() - v * v.t(), 2)/n << "; beta: " << norm(beta - beta_old) << "; d: " << sqrt(pow(d - d_old, 2)) << std::endl;
+				std::cout << "\t\t" << "u: " << spec_norm(u_old * u_old.t() - u * u.t()) << "; v: " << spec_norm(v_old * v_old.t() - v * v.t()) << "; beta: " << norm(beta - beta_old) << "; d: " << sqrt(pow(d - d_old, 2)) << std::endl;
 			}
 		}
 
-		u_distance(iter) = norm(u_old * u_old.t() - u * u.t(), 2)/n;
+		arma::mat diff_u = (u_old * u_old.t() - u * u.t());
+		u_distance(iter) = spec_norm(diff_u);
 		
 		cond = stop_condition(u, u_old, v, v_old, tol);
 
@@ -1490,10 +1496,10 @@ bool stop_condition(const arma::colvec& u,
 {
 	int N = u.n_elem;
 
-	arma::mat diff_u = (u_old * u_old.t() - u * u.t())/N;
-	arma::mat diff_v = (v_old * v_old.t() - v * v.t())/N;
+	arma::mat diff_u = (u_old * u_old.t() - u * u.t());
+	arma::mat diff_v = (v_old * v_old.t() - v * v.t());
 
-	return ((norm(diff_u, 2) > tol) | (norm(diff_v, 2) > tol));
+	return ((spec_norm(diff_u) > tol) | (spec_norm(diff_v) > tol));
 }
 
 // [[Rcpp::export]]
@@ -1762,6 +1768,18 @@ Rcpp::List test_rirlba (const arma::mat& A)
 }
 
 
+double spec_norm (
+	const arma::mat& A
+) 
+{
+	int n = A.n_rows;
+	arma::mat U_diff, V_diff;
+	arma::vec s_diff;
+
+	irlba(U_diff, s_diff, V_diff, A, 1);
+
+	return s_diff[0]/n;
+}
 
 // // [[Rcpp::export]]
 // arma::colvec kron_diag (const arma::mat& A, const arma::mat& B) {
