@@ -39,18 +39,21 @@ library(SuperCENT)
 set.seed(1)
 # generate network and (X, y)
 n <- 2^8
-d <- 1
+d <- 2^c(0, -1, -2)
+r <- length(d)
 beta0 <- c(1,3,5)
 beta_u <- 2^6
 beta_v <- 2^0
 sigmaa <- 2^{0}
 sigmay <- 2^{-6}
 
-U <- matrix(rnorm(n), nrow = n)
+D <- diag(d, nrow = r)
+
+U <- matrix(rnorm(n*r), nrow = n)
 U_norm <- sqrt(colSums(U^2))
 U <- sweep(U, 2, U_norm, "/") * sqrt(n)
 
-V <- matrix(rnorm(n), nrow = n)
+V <- matrix(rnorm(n*r), nrow = n)
 V_norm <- sqrt(colSums(V^2))
 V <- sweep(V, 2, V_norm, "/") * sqrt(n)
 
@@ -58,16 +61,17 @@ p <- length(beta0)
 X <- matrix(rnorm(n*(p-1)), nrow = n, ncol = p - 1, byrow = F)
 X <- cbind(1, X)
 
-y <- X %*% beta0 + beta_u * U + beta_v * V + rnorm(n, sd = sigmay)
-A <- d * U %*% t(V) + matrix(rnorm(n^2, sd = sigmaa), nrow = n)
+y <- X %*% beta0 + beta_u * U[,1] + beta_v * V[,1] + rnorm(n, sd = sigmay)
+A <- U %*% D %*% t(V) + matrix(rnorm(n^2, sd = sigmaa), nrow = n)
 
 # SuperCENT oracle
-## supercent(A, X, y, l = n*sigmay^2/sigmaa^2)
+## supercent(A, X, y, l = n*sigmay^2/sigmaa^2, r = r)
 
 # SuperCENT CV
-ret <- cv.supercent(A, X, y, lrange = 2^4, gap = 2, folds = 10)
+ret <- cv.supercent(A, X, y, lrange = 2^4, gap = 2, folds = 10, r = r)
 ## summary table
 confint(ret)
 ## confidence interval
 confint(ret, ci = T)
 ```
+

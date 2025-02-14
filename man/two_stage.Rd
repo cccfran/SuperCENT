@@ -4,7 +4,16 @@
 \alias{two_stage}
 \title{The two-stage procedure}
 \usage{
-two_stage(A, X, y, r = 1, scaled = 1, weights = rep(1, length(y)), ...)
+two_stage(
+  A,
+  X,
+  y,
+  r = 1,
+  scaled = 1,
+  mode = "uv",
+  weights = rep(1, length(y)),
+  ...
+)
 }
 \arguments{
 \item{A}{The adjacency matrix of the input network}

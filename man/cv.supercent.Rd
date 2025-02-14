@@ -14,8 +14,11 @@ cv.supercent(
   folds = 10,
   tol = 1e-04,
   max_iter = 200,
+  mode = "uv",
   weights = rep(1, length(y)),
   verbose = 0,
+  r = 1,
+  multi_rank = TRUE,
   ...
 )
 }

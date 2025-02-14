@@ -13,16 +13,28 @@ cv_cent <- function(A, X, y, lmin, lmax, gap, tol, max_iter, folds = 10L, verbos
     .Call(`_SuperCENT_cv_cent`, A, X, y, lmin, lmax, gap, tol, max_iter, folds, verbose, scaled, scaledn, d0_, u0_, v0_)
 }
 
-lr <- function(A, X, y, l, tol, max_iter, verbose = 0L, scaled = 1L) {
-    .Call(`_SuperCENT_lr`, A, X, y, l, tol, max_iter, verbose, scaled)
+lr <- function(A, X, y, l, tol, max_iter, verbose = 0L, scaled = 1L, early_stopping = 1L, only_u = 0L, only_v = 0L) {
+    .Call(`_SuperCENT_lr`, A, X, y, l, tol, max_iter, verbose, scaled, early_stopping, only_u, only_v)
+}
+
+lr_rand_int <- function(A, X, y, d, u, v, l, tol, max_iter, verbose = 0L, scaled = 1L) {
+    .Call(`_SuperCENT_lr_rand_int`, A, X, y, d, u, v, l, tol, max_iter, verbose, scaled)
+}
+
+lr_test <- function(A, X, y, l, tol, max_iter, u0, v0, verbose = 0L, scaled = 1L) {
+    .Call(`_SuperCENT_lr_test`, A, X, y, l, tol, max_iter, u0, v0, verbose, scaled)
+}
+
+lr_rand_init_test <- function(A, X, y, d, u, v, l, tol, max_iter, u0, v0, verbose = 0L, scaled = 1L) {
+    .Call(`_SuperCENT_lr_rand_init_test`, A, X, y, d, u, v, l, tol, max_iter, u0, v0, verbose, scaled)
 }
 
 cv_oracle_lr <- function(A, X, y, lmin, lmax, gap, tol, max_iter, beta0, verbose = 0L, scaled = 1L, scaledn = 0L, d0_ = NULL, u0_ = NULL, v0_ = NULL, X_test_ = NULL, y_test_ = NULL, u_test0_ = NULL, v_test0_ = NULL) {
     .Call(`_SuperCENT_cv_oracle_lr`, A, X, y, lmin, lmax, gap, tol, max_iter, beta0, verbose, scaled, scaledn, d0_, u0_, v0_, X_test_, y_test_, u_test0_, v_test0_)
 }
 
-cv_lr <- function(A, X, y, lmin, lmax, gap, tol, max_iter, folds = 10L, verbose = 0L, scaled = 1L, scaledn = 0L, d0_ = NULL, u0_ = NULL, v0_ = NULL) {
-    .Call(`_SuperCENT_cv_lr`, A, X, y, lmin, lmax, gap, tol, max_iter, folds, verbose, scaled, scaledn, d0_, u0_, v0_)
+cv_lr <- function(A, X, y, lmin, lmax, gap, tol, max_iter, folds = 10L, verbose = 0L, early_stopping = 1L, only_u = 0L, only_v = 0L, scaled = 1L, scaledn = 0L, d0_ = NULL, u0_ = NULL, v0_ = NULL) {
+    .Call(`_SuperCENT_cv_lr`, A, X, y, lmin, lmax, gap, tol, max_iter, folds, verbose, early_stopping, only_u, only_v, scaled, scaledn, d0_, u0_, v0_)
 }
 
 cv_lr_2 <- function(A, X, y, lmin, lmax, gap, tol, max_iter, folds = 10L, verbose = 0L, scaled = 1L, scaledn = 0L, d0_ = NULL, u0_ = NULL, v0_ = NULL) {
@@ -41,6 +53,10 @@ predict_oracle <- function(A, beta, X_test, u_test, v_test) {
     .Call(`_SuperCENT_predict_oracle`, A, beta, X_test, u_test, v_test)
 }
 
+test_ols <- function(X, y, beta) {
+    .Call(`_SuperCENT_test_ols`, X, y, beta)
+}
+
 lr_check <- function(A, X, y, u, v, beta, d, l, tol, max_iter, verbose, uv_is_init, u0) {
     .Call(`_SuperCENT_lr_check`, A, X, y, u, v, beta, d, l, tol, max_iter, verbose, uv_is_init, u0)
 }
@@ -55,5 +71,9 @@ two_stage_c <- function(A, X, y, tol, max_iter) {
 
 test_rirlba <- function(A) {
     .Call(`_SuperCENT_test_rirlba`, A)
+}
+
+compute_objective <- function(A, X, y, beta, d, u, v, l) {
+    .Call(`_SuperCENT_compute_objective`, A, X, y, beta, d, u, v, l)
 }
 

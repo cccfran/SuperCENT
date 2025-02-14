@@ -85,8 +85,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // lr
-Rcpp::List lr(const arma::mat& A, const arma::mat& X, const arma::colvec& y, double l, double tol, int max_iter, int verbose, int scaled);
-RcppExport SEXP _SuperCENT_lr(SEXP ASEXP, SEXP XSEXP, SEXP ySEXP, SEXP lSEXP, SEXP tolSEXP, SEXP max_iterSEXP, SEXP verboseSEXP, SEXP scaledSEXP) {
+Rcpp::List lr(const arma::mat& A, const arma::mat& X, const arma::colvec& y, double l, double tol, int max_iter, int verbose, int scaled, int early_stopping, int only_u, int only_v);
+RcppExport SEXP _SuperCENT_lr(SEXP ASEXP, SEXP XSEXP, SEXP ySEXP, SEXP lSEXP, SEXP tolSEXP, SEXP max_iterSEXP, SEXP verboseSEXP, SEXP scaledSEXP, SEXP early_stoppingSEXP, SEXP only_uSEXP, SEXP only_vSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -98,7 +98,74 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type max_iter(max_iterSEXP);
     Rcpp::traits::input_parameter< int >::type verbose(verboseSEXP);
     Rcpp::traits::input_parameter< int >::type scaled(scaledSEXP);
-    rcpp_result_gen = Rcpp::wrap(lr(A, X, y, l, tol, max_iter, verbose, scaled));
+    Rcpp::traits::input_parameter< int >::type early_stopping(early_stoppingSEXP);
+    Rcpp::traits::input_parameter< int >::type only_u(only_uSEXP);
+    Rcpp::traits::input_parameter< int >::type only_v(only_vSEXP);
+    rcpp_result_gen = Rcpp::wrap(lr(A, X, y, l, tol, max_iter, verbose, scaled, early_stopping, only_u, only_v));
+    return rcpp_result_gen;
+END_RCPP
+}
+// lr_rand_int
+Rcpp::List lr_rand_int(const arma::mat& A, const arma::mat& X, const arma::colvec& y, double d, arma::colvec& u, arma::colvec& v, double l, double tol, int max_iter, int verbose, int scaled);
+RcppExport SEXP _SuperCENT_lr_rand_int(SEXP ASEXP, SEXP XSEXP, SEXP ySEXP, SEXP dSEXP, SEXP uSEXP, SEXP vSEXP, SEXP lSEXP, SEXP tolSEXP, SEXP max_iterSEXP, SEXP verboseSEXP, SEXP scaledSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< double >::type d(dSEXP);
+    Rcpp::traits::input_parameter< arma::colvec& >::type u(uSEXP);
+    Rcpp::traits::input_parameter< arma::colvec& >::type v(vSEXP);
+    Rcpp::traits::input_parameter< double >::type l(lSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< int >::type max_iter(max_iterSEXP);
+    Rcpp::traits::input_parameter< int >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< int >::type scaled(scaledSEXP);
+    rcpp_result_gen = Rcpp::wrap(lr_rand_int(A, X, y, d, u, v, l, tol, max_iter, verbose, scaled));
+    return rcpp_result_gen;
+END_RCPP
+}
+// lr_test
+Rcpp::List lr_test(const arma::mat& A, const arma::mat& X, const arma::colvec& y, double l, double tol, int max_iter, const arma::colvec& u0, const arma::colvec& v0, int verbose, int scaled);
+RcppExport SEXP _SuperCENT_lr_test(SEXP ASEXP, SEXP XSEXP, SEXP ySEXP, SEXP lSEXP, SEXP tolSEXP, SEXP max_iterSEXP, SEXP u0SEXP, SEXP v0SEXP, SEXP verboseSEXP, SEXP scaledSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< double >::type l(lSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< int >::type max_iter(max_iterSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type u0(u0SEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type v0(v0SEXP);
+    Rcpp::traits::input_parameter< int >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< int >::type scaled(scaledSEXP);
+    rcpp_result_gen = Rcpp::wrap(lr_test(A, X, y, l, tol, max_iter, u0, v0, verbose, scaled));
+    return rcpp_result_gen;
+END_RCPP
+}
+// lr_rand_init_test
+Rcpp::List lr_rand_init_test(const arma::mat& A, const arma::mat& X, const arma::colvec& y, double d, arma::colvec& u, arma::colvec& v, double l, double tol, int max_iter, const arma::colvec& u0, const arma::colvec& v0, int verbose, int scaled);
+RcppExport SEXP _SuperCENT_lr_rand_init_test(SEXP ASEXP, SEXP XSEXP, SEXP ySEXP, SEXP dSEXP, SEXP uSEXP, SEXP vSEXP, SEXP lSEXP, SEXP tolSEXP, SEXP max_iterSEXP, SEXP u0SEXP, SEXP v0SEXP, SEXP verboseSEXP, SEXP scaledSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< double >::type d(dSEXP);
+    Rcpp::traits::input_parameter< arma::colvec& >::type u(uSEXP);
+    Rcpp::traits::input_parameter< arma::colvec& >::type v(vSEXP);
+    Rcpp::traits::input_parameter< double >::type l(lSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< int >::type max_iter(max_iterSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type u0(u0SEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type v0(v0SEXP);
+    Rcpp::traits::input_parameter< int >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< int >::type scaled(scaledSEXP);
+    rcpp_result_gen = Rcpp::wrap(lr_rand_init_test(A, X, y, d, u, v, l, tol, max_iter, u0, v0, verbose, scaled));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -132,8 +199,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // cv_lr
-Rcpp::List cv_lr(const arma::mat& A, const arma::mat& X, const arma::colvec& y, double lmin, double lmax, double gap, double tol, int max_iter, int folds, int verbose, int scaled, int scaledn, Nullable<NumericVector> d0_, Nullable<NumericVector> u0_, Nullable<NumericVector> v0_);
-RcppExport SEXP _SuperCENT_cv_lr(SEXP ASEXP, SEXP XSEXP, SEXP ySEXP, SEXP lminSEXP, SEXP lmaxSEXP, SEXP gapSEXP, SEXP tolSEXP, SEXP max_iterSEXP, SEXP foldsSEXP, SEXP verboseSEXP, SEXP scaledSEXP, SEXP scalednSEXP, SEXP d0_SEXP, SEXP u0_SEXP, SEXP v0_SEXP) {
+Rcpp::List cv_lr(const arma::mat& A, const arma::mat& X, const arma::colvec& y, double lmin, double lmax, double gap, double tol, int max_iter, int folds, int verbose, int early_stopping, int only_u, int only_v, int scaled, int scaledn, Nullable<NumericVector> d0_, Nullable<NumericVector> u0_, Nullable<NumericVector> v0_);
+RcppExport SEXP _SuperCENT_cv_lr(SEXP ASEXP, SEXP XSEXP, SEXP ySEXP, SEXP lminSEXP, SEXP lmaxSEXP, SEXP gapSEXP, SEXP tolSEXP, SEXP max_iterSEXP, SEXP foldsSEXP, SEXP verboseSEXP, SEXP early_stoppingSEXP, SEXP only_uSEXP, SEXP only_vSEXP, SEXP scaledSEXP, SEXP scalednSEXP, SEXP d0_SEXP, SEXP u0_SEXP, SEXP v0_SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -147,12 +214,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type max_iter(max_iterSEXP);
     Rcpp::traits::input_parameter< int >::type folds(foldsSEXP);
     Rcpp::traits::input_parameter< int >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< int >::type early_stopping(early_stoppingSEXP);
+    Rcpp::traits::input_parameter< int >::type only_u(only_uSEXP);
+    Rcpp::traits::input_parameter< int >::type only_v(only_vSEXP);
     Rcpp::traits::input_parameter< int >::type scaled(scaledSEXP);
     Rcpp::traits::input_parameter< int >::type scaledn(scalednSEXP);
     Rcpp::traits::input_parameter< Nullable<NumericVector> >::type d0_(d0_SEXP);
     Rcpp::traits::input_parameter< Nullable<NumericVector> >::type u0_(u0_SEXP);
     Rcpp::traits::input_parameter< Nullable<NumericVector> >::type v0_(v0_SEXP);
-    rcpp_result_gen = Rcpp::wrap(cv_lr(A, X, y, lmin, lmax, gap, tol, max_iter, folds, verbose, scaled, scaledn, d0_, u0_, v0_));
+    rcpp_result_gen = Rcpp::wrap(cv_lr(A, X, y, lmin, lmax, gap, tol, max_iter, folds, verbose, early_stopping, only_u, only_v, scaled, scaledn, d0_, u0_, v0_));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -226,6 +296,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// test_ols
+arma::colvec test_ols(const arma::mat& X, const arma::colvec& y, arma::colvec beta);
+RcppExport SEXP _SuperCENT_test_ols(SEXP XSEXP, SEXP ySEXP, SEXP betaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type beta(betaSEXP);
+    rcpp_result_gen = Rcpp::wrap(test_ols(X, y, beta));
+    return rcpp_result_gen;
+END_RCPP
+}
 // lr_check
 Rcpp::List lr_check(const arma::mat& A, const arma::mat& X, const arma::colvec& y, arma::colvec& u, arma::colvec& v, arma::colvec& beta, double d, double l, double tol, int max_iter, int verbose, bool uv_is_init, arma::colvec& u0);
 RcppExport SEXP _SuperCENT_lr_check(SEXP ASEXP, SEXP XSEXP, SEXP ySEXP, SEXP uSEXP, SEXP vSEXP, SEXP betaSEXP, SEXP dSEXP, SEXP lSEXP, SEXP tolSEXP, SEXP max_iterSEXP, SEXP verboseSEXP, SEXP uv_is_initSEXP, SEXP u0SEXP) {
@@ -292,22 +375,45 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// compute_objective
+double compute_objective(const arma::mat& A, const arma::mat& X, const arma::colvec& y, const arma::colvec& beta, double d, const arma::colvec& u, const arma::colvec& v, double l);
+RcppExport SEXP _SuperCENT_compute_objective(SEXP ASEXP, SEXP XSEXP, SEXP ySEXP, SEXP betaSEXP, SEXP dSEXP, SEXP uSEXP, SEXP vSEXP, SEXP lSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< double >::type d(dSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type u(uSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type v(vSEXP);
+    Rcpp::traits::input_parameter< double >::type l(lSEXP);
+    rcpp_result_gen = Rcpp::wrap(compute_objective(A, X, y, beta, d, u, v, l));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_SuperCENT_cent", (DL_FUNC) &_SuperCENT_cent, 9},
     {"_SuperCENT_cv_oracle_cent", (DL_FUNC) &_SuperCENT_cv_oracle_cent, 19},
     {"_SuperCENT_cv_cent", (DL_FUNC) &_SuperCENT_cv_cent, 15},
-    {"_SuperCENT_lr", (DL_FUNC) &_SuperCENT_lr, 8},
+    {"_SuperCENT_lr", (DL_FUNC) &_SuperCENT_lr, 11},
+    {"_SuperCENT_lr_rand_int", (DL_FUNC) &_SuperCENT_lr_rand_int, 11},
+    {"_SuperCENT_lr_test", (DL_FUNC) &_SuperCENT_lr_test, 10},
+    {"_SuperCENT_lr_rand_init_test", (DL_FUNC) &_SuperCENT_lr_rand_init_test, 13},
     {"_SuperCENT_cv_oracle_lr", (DL_FUNC) &_SuperCENT_cv_oracle_lr, 19},
-    {"_SuperCENT_cv_lr", (DL_FUNC) &_SuperCENT_cv_lr, 15},
+    {"_SuperCENT_cv_lr", (DL_FUNC) &_SuperCENT_cv_lr, 18},
     {"_SuperCENT_cv_lr_2", (DL_FUNC) &_SuperCENT_cv_lr_2, 15},
     {"_SuperCENT_predict", (DL_FUNC) &_SuperCENT_predict, 7},
     {"_SuperCENT_predict_svd", (DL_FUNC) &_SuperCENT_predict_svd, 3},
     {"_SuperCENT_predict_oracle", (DL_FUNC) &_SuperCENT_predict_oracle, 5},
+    {"_SuperCENT_test_ols", (DL_FUNC) &_SuperCENT_test_ols, 3},
     {"_SuperCENT_lr_check", (DL_FUNC) &_SuperCENT_lr_check, 13},
     {"_SuperCENT_predict_uv_R", (DL_FUNC) &_SuperCENT_predict_uv_R, 7},
     {"_SuperCENT_two_stage_c", (DL_FUNC) &_SuperCENT_two_stage_c, 5},
     {"_SuperCENT_test_rirlba", (DL_FUNC) &_SuperCENT_test_rirlba, 1},
+    {"_SuperCENT_compute_objective", (DL_FUNC) &_SuperCENT_compute_objective, 8},
     {NULL, NULL, 0}
 };
 

@@ -20,7 +20,23 @@ var_mat(
 \arguments{
 \item{X_train}{X train matrix}
 
-\item{method}{method}
+\item{beta_u}{\eqn{\beta_u}}
+
+\item{beta_v}{\eqn{\beta_v}}
+
+\item{d}{d}
+
+\item{u}{u}
+
+\item{v}{v}
+
+\item{epsa2}{\eqn{\epsilon_a^2}}
+
+\item{epsy2}{\eqn{\epsilon_y^2}}
+
+\item{l}{\eqn{\lambda}}
+
+\item{method}{two_stage or lr (SuperCENT)}
 }
 \value{
 variance of hat u,v,betax, betau, betav

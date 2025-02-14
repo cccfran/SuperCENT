@@ -4,7 +4,7 @@
 \alias{confint}
 \title{Confidence interval and summary table of \eqn{\beta}}
 \usage{
-confint(ret, alpha = 0.05, ci = F)
+confint(ret, alpha = 0.05, ci = F, multi_rank = F)
 }
 \arguments{
 \item{ret}{A  \code{two_stage}, \code{supercent}

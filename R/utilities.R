@@ -6,6 +6,13 @@ spec_norm_diff <- function(x, y, scale = T) {
     y <- y/sqrt(sum(y^2))
   }
   norm(x %*% t(x) - y %*% t(y), "2")
+  # mat <- x %*% t(x) - y %*% t(y)
+  # if(sum(mat) == 0) {
+  #   ret <- 0
+  # } else {
+  #   ret <- irlba::irlba(mat, nu = 1)
+  # }
+  # ret
 }
 
 ret_constructor <- function(A, X, y) {
@@ -100,7 +107,7 @@ unobserved_shift_back <- function(xx, weights) {
 #' X <- matrix(rnorm(n*p), nrow = n, ncol = p)
 #' y <- rnorm(n, sd = sigmay)
 #' ret <- two_stage(A, X, y)
-two_stage <- function(A, X, y, r = 1, scaled = 1, weights = rep(1, length(y)), ...) {
+two_stage <- function(A, X, y, r = 1, scaled = 1, mode = "uv", weights = rep(1, length(y)), ...) {
   
   n = nrow(A)
   k = ifelse(is.null(X), 0, ncol(X))
@@ -110,6 +117,9 @@ two_stage <- function(A, X, y, r = 1, scaled = 1, weights = rep(1, length(y)), .
   A_ori <- A
   if(n_obs < n) A <- A_shift_unobserved_last(A_ori, weights)
   
+  multi_rank <- FALSE
+  if(r > 1) multi_rank = TRUE
+  
   # SVD
   svda <- irlba::irlba(A, nu = r, nv = r)
   uu <- svda$u[,1]
@@ -117,7 +127,15 @@ two_stage <- function(A, X, y, r = 1, scaled = 1, weights = rep(1, length(y)), .
   d <- svda$d[1]
   
   # OLS
-  ret_two_stage <- lm.fit(cbind(X, uu[1:n_obs], vv[1:n_obs]), y)
+  if(mode == "uv") {
+    ret_two_stage <- lm.fit(cbind(X, uu[1:n_obs], vv[1:n_obs]), y)
+  } else if (mode == "u") {
+    ret_two_stage <- lm.fit(cbind(X, uu[1:n_obs], 0), y)
+    ret_two_stage$coefficients[ncol(X)+2] <- 0
+  } else if (mode == "v") {
+    ret_two_stage <- lm.fit(cbind(X, 0, vv[1:n_obs]), y)
+    ret_two_stage$coefficients[ncol(X)+1] <- 0
+  }
   ret_two_stage$beta <- ret_two_stage$coefficients
   
   if(scaled) {
@@ -139,30 +157,44 @@ two_stage <- function(A, X, y, r = 1, scaled = 1, weights = rep(1, length(y)), .
   
   ret_two_stage$u_distance <- NA
   ret_two_stage$method <- "two_stage"
+  ret_two_stage$mode <- mode
   
   ret_two_stage$A <- A_ori
   ret_two_stage$X <- X
   ret_two_stage$y <- y
   
-  ret_two_stage$epsa <- epsa_hat(ret_two_stage)
+  ret_two_stage$epsa <- epsa_hat(ret_two_stage, multi_rank = multi_rank)
   ret_two_stage$epsy <- epsy_hat(ret_two_stage)
   
   ret_two_stage$iter <- NA
   ret_two_stage$l <- NA
+  
+  if(multi_rank) {
+    U_perp <- svda$u[, -1, drop=F]
+    V_perp <- svda$v[, -1, drop=F]
+    d_perp <- svda$d[-1]
+    
+    ret_two_stage$multi_rank <- list(d_perp = d_perp/n,
+                                     U_perp = U_perp*sqrt(n),
+                                     V_perp = V_perp*sqrt(n),
+                                     A_perp = U_perp %*% diag(d_perp) %*% t(V_perp))
+    
+  }
   
   class(ret_two_stage) <- "two_stage"
   
   ret_two_stage
 }
 
-lopt_estimate <- function(A, X, y, weights) {
+
+lopt_estimate <- function(A, X, y, weights, r = 1, multi_rank = TRUE) {
   
   n <- length(y)
   n_obs <- sum(weights == 1)
   
-  ret_two_stage <- two_stage(A, X, y, weights = weights)
+  ret_two_stage <- two_stage(A, X, y, r=r, weights = weights)
   sigmayhat2 <- epsy_hat(ret_two_stage)^2
-  sigmaahat2 <- epsa_hat(ret_two_stage)^2
+  sigmaahat2 <- epsa_hat(ret_two_stage, multi_rank = multi_rank)^2
   
   l <- n*sigmayhat2/sigmaahat2*n/n_obs
   
@@ -212,8 +244,9 @@ lopt_estimate <- function(A, X, y, weights) {
 #' X <- matrix(rnorm(n*p), nrow = n, ncol = p)
 #' y <- rnorm(n, sd = sigmay)
 #' ret <- supercent(A, X, y)
-supercent <- function(A, X, y, l = NULL, tol = 1e-4, max_iter = 200, 
-                      weights = rep(1, length(y)), verbose = 0, ...) {
+supercent <- function(A, X, y, l = NULL, tol = 1e-4, max_iter = 200, mode = "uv",
+                      weights = rep(1, length(y)), verbose = 0,
+                      r = 1, multi_rank = TRUE, rand_int = FALSE, ...) {
   
   n = nrow(A)
   k = ifelse(is.null(X), 0, ncol(X))
@@ -226,9 +259,22 @@ supercent <- function(A, X, y, l = NULL, tol = 1e-4, max_iter = 200,
     A <- A_shift_unobserved_last(A_ori, weights)
   }
   
-  if(is.null(l)) l <- lopt_estimate(A, X, y, weights)
+  if(is.null(l)) l <- lopt_estimate(A, X, y, weights, r = r, multi_rank = multi_rank)
   
-  ret <- lr(A, X, y, l, tol, max_iter, verbose)
+  if(rand_int) {
+    svda <- svd(A, nu=1, nv=1)
+    u <- svda$u[,1] + rnorm(n,0,10/sqrt(n))
+    v <- svda$v[,1] + rnorm(n,0,10/sqrt(n))
+    u <- u/norm(u, "2")*sqrt(n)
+    v <- v/norm(v, "2")*sqrt(n)
+    d <- svda$d[1] / n
+    ret <- lr_rand_int(A, X, y, d, u, v, l, tol, max_iter, verbose)
+  } else {
+    if(mode == "uv") {only_u <- F; only_v <- F}
+    if(mode == "u") {only_u <- T; only_v <- F}
+    if(mode == "v") {only_u <- F; only_v <- T}
+    ret <- lr(A, X, y, l, tol, max_iter, verbose, only_u = only_u, only_v = only_v)
+  }
   
   # Adjust sign
   ret <- adjust_sign(ret)
@@ -239,17 +285,50 @@ supercent <- function(A, X, y, l = NULL, tol = 1e-4, max_iter = 200,
     ret$v <- unobserved_shift_back(ret$v, weights)
   }
   
+  # multi-rank
+  if(multi_rank) {
+    svda <- svd(A - ret$d * ret$u %*% t(ret$v))
+    U_perp <- svda$u[,1:(r-1),drop=F]
+    V_perp <- svda$v[,1:(r-1),drop=F]
+    d_perp <- svda$d[1:(r-1)]
+    
+    ret$multi_rank <- list(d_perp = d_perp/n,
+                           U_perp = U_perp*sqrt(n),
+                           V_perp = V_perp*sqrt(n),
+                           A_perp = U_perp %*% diag(d_perp) %*% t(V_perp))
+    
+  }
+  
   ret$A <- A_ori
   ret$X <- X
   ret$y <- y
+  ret$mode <- mode
   
-  ret$epsa <- epsa_hat(ret)
+  ret$epsa <- epsa_hat(ret, multi_rank = multi_rank)
   ret$epsy <- epsy_hat(ret)
   
   class(ret) <- "supercent"
   
   ret
 }
+
+
+rand.supercent <- function(A, X, y, l = NULL, tol = 1e-4, max_iter = 200, 
+                           weights = rep(1, length(y)), verbose = 0, rand_times = 30, ...) {
+  
+  ret <- NULL
+  ret$obj <- 1e12
+  
+  for(i in 1:rand_times) {
+    ret_tmp <- supercent(A, X, y, l, tol, max_iter, weights, verbose, TRUE)
+    if(tail(ret_tmp$u_distance, 1) < ret$obj) ret <- ret_tmp
+    ret$obj <- tail(ret_tmp$u_distance, 1)
+  }
+  
+  ret
+}
+
+
 
 #' SuperCENT k-fold cross-validation
 #' 
@@ -302,9 +381,11 @@ supercent <- function(A, X, y, l = NULL, tol = 1e-4, max_iter = 200,
 #' y <- rnorm(n, sd = sigmay)
 #' ret <- cv.supercent(A, X, y)
 cv.supercent <- function(A, X, y, 
-                         l = NULL, lrange = 2^4, gap = 2,
+                         l = NULL, lrange = 2^4, gap = 2, 
                          folds = 10, tol = 1e-4, max_iter = 200, 
-                         weights = rep(1, length(y)), verbose = 0, ...) {
+                         mode = "uv",
+                         weights = rep(1, length(y)), verbose = 0, 
+                         r = 1, multi_rank = TRUE, ...) {
   
   n = nrow(A)
   k = ifelse(is.null(X), 0, ncol(X))
@@ -314,18 +395,22 @@ cv.supercent <- function(A, X, y,
   A_ori <- A
   if(n_obs < n) A <- A_shift_unobserved_last(A_ori, weights)
   
-  if(is.null(l)) l <- lopt_estimate(A, X, y, weights)
+  if(is.null(l)) l <- lopt_estimate(A, X, y, weights, r = r, multi_rank = multi_rank)
   
-  lmin <- l/lrange*(2^gap)
+  lmin <- l/lrange
   # lmin <- l
   lmax <- l*lrange
+  
+  if(mode == "uv") {only_u <- F; only_v <- F}
+  if(mode == "u") {only_u <- T; only_v <- F}
+  if(mode == "v") {only_u <- F; only_v <- T}
   
   if(n_obs < n) {
     print("Semi-SuperCENT")
     ret <- cv_lr_2(A, X, y, lmin, lmax, gap, tol, max_iter, folds, verbose) 
   } else {
     print("SuperCENT")
-    ret <- cv_lr(A, X, y, lmin, lmax, gap, tol, max_iter, folds, verbose) 
+    ret <- cv_lr(A, X, y, lmin, lmax, gap, tol, max_iter, folds, verbose, early_stopping = F, only_u = only_u, only_v = only_v) 
   }
   
   # Adjust sign
@@ -337,11 +422,26 @@ cv.supercent <- function(A, X, y,
     ret$v <- unobserved_shift_back(ret$v, weights)
   }
   
+  # multi-rank
+  if(multi_rank) {
+    svda <- svd(A - ret$d * ret$u %*% t(ret$v))
+    U_perp <- svda$u[,1:(r-1),drop=F]
+    V_perp <- svda$v[,1:(r-1),drop=F]
+    d_perp <- svda$d[1:(r-1)]
+    
+    ret$multi_rank <- list(d_perp = d_perp/n,
+                           U_perp = U_perp*sqrt(n),
+                           V_perp = V_perp*sqrt(n),
+                           A_perp = U_perp %*% diag(d_perp) %*% t(V_perp))
+    
+  }
+  
   ret$A <- A_ori
   ret$X <- X
   ret$y <- y
+  ret$mode <- mode
   
-  ret$epsa <- epsa_hat(ret)
+  ret$epsa <- epsa_hat(ret, multi_rank = multi_rank)
   ret$epsy <- epsy_hat(ret)
   
   class(ret) <- "cv.supercent"
@@ -384,20 +484,21 @@ adjust_sign <- function(ret) {
 
 oracle <- function(A, X, y, d, U, V, beta0vec, beta_hat, epsa, epsy,
                    A_hat, l = NA,
-                   weights = observed, method) {
+                   weights = observed, method, multi_rank = TRUE,
+                   U_perp, V_perp, d_perp) {
   
   unobs <- which(!weights)
   obs <- which(weights == 1)
   
   ret <- ret_constructor(A, X, y)
   
-  ret$d <- d
+  ret$d <- d[1]
   ret$u <- U
   ret$v <- V
   ret$beta <- beta0vec
   ret$beta_hat <- beta_hat
   
-  ret$residuals <- (cbind(X, U[obs,], V[obs,]) %*% beta0vec - y)
+  ret$residuals <- (cbind(X, U[obs,1], V[obs,1]) %*% beta0vec - y)
   
   df <- opt$n_train - length(beta0vec)
   
@@ -412,6 +513,15 @@ oracle <- function(A, X, y, d, U, V, beta0vec, beta_hat, epsa, epsy,
   ret$l <- l
   
   ret$method <- method
+  
+  # multi-rank
+  if(multi_rank) {
+    ret$multi_rank <- list(d_perp = d_perp,
+                           U_perp = U_perp,
+                           V_perp = V_perp,
+                           A_perp = U_perp %*% diag(d_perp) %*% t(V_perp))
+    
+  }
   
   ret
 }
@@ -466,7 +576,8 @@ predict_supervised <- function(ret, A, X, weights) {
   u_test <- uu[(n_obs+1):n]/u_train_norm*sqrt(n_obs); 
   v_test <- vv[(n_obs+1):n]/v_train_norm*sqrt(n_obs); 
   
-  cbind(X, u_test, v_test) %*% ret$beta
+  list(y_test = cbind(X, u_test, v_test) %*% ret$beta, 
+       u2 = u_test, v2 = v_test)
   
 }
 
@@ -536,7 +647,15 @@ ret_sign <- function(ret, beta0vec, u0, v0)
 #' Calculate variance
 #' 
 #' @param X_train X train matrix
-#' @param method method
+#' @param beta_u \eqn{\beta_u}
+#' @param beta_v \eqn{\beta_v}
+#' @param d d
+#' @param u u
+#' @param v v
+#' @param epsa2 \eqn{\epsilon_a^2}
+#' @param epsy2 \eqn{\epsilon_y^2}
+#' @param l \eqn{\lambda}
+#' @param method two_stage or lr (SuperCENT)
 #' @return variance of hat u,v,betax, betau, betav
 var_mat <- function(X_train, beta_u, beta_v, d, u, v, epsa2, epsy2, l = NULL, method = "lr")
 {
@@ -650,13 +769,19 @@ epsa_hat_oracle <- function(A0, d, u, v) {
   sqrt(sum((d * u%*%t(v) - A0)^2)/(n^2-1))
 }
 
-epsa_hat <- function(ret) {
+epsa_hat <- function(ret, multi_rank = TRUE) {
   n <- length(ret$u)
   if(!is.null(ret$v)) {
-    epsa2 <- sum((ret$d*ret$u%*%t(ret$v) - ret$A)^2)/n^2
+    A_hat <- ret$d*ret$u%*%t(ret$v)
   } else {
-    epsa2 <- sum((ret$d*ret$u%*%t(ret$u) - ret$A)^2)/n^2
+    A_hat <- ret$d*ret$u%*%t(ret$u)
   }
+  
+  if(multi_rank) {
+    A_hat <- A_hat + ret$multi_rank$A_perp
+  }
+  
+  epsa2 <- sum((A_hat - ret$A)^2)/n^2
   
   sqrt(epsa2)
 }
@@ -681,7 +806,7 @@ epsy_hat <- function(ret) {
 #' if FALSE, return the summary table.
 #' @return Output a data.frame of confidence interval
 #' or summary table.
-confint <- function(ret, alpha = 0.05, ci = F) {
+confint <- function(ret, alpha = 0.05, ci = F, multi_rank = F) {
   
   n <- length(ret$y)
   k <- ncol(ret$X)
@@ -689,37 +814,61 @@ confint <- function(ret, alpha = 0.05, ci = F) {
   # for oracle
   if(!is.null(ret$beta_hat)) betahat <- ret$beta_hat
   
-  sduv <- sqrt(rate_betauv_two_stage(X = ret$X, 
-                                     u = ret$u, 
-                                     v = ret$v, 
-                                     beta0 = ret$beta, 
-                                     d = ret$d, 
-                                     sigmay2 = ret$epsy^2,
-                                     sigmaa2 = ret$epsa^2, 
-                                     n = n, 
-                                     output = "uv") )
-  
-  # print(rate_betauv_two_stage_check(ret$X, 
-  #                             ret$u, 
-  #                             ret$v, 
-  #                             ret$beta, 
-  #                             ret$d, 
-  #                             ret$epsa^2, 
-  #                             ret$epsy^2,
-  #                             n))
-  if(k == 0) {
-    sdx <- NULL
-  } else {
-    sdx <- sqrt(rate_betax_two_stage(X = ret$X, 
-                                     u = ret$u,
-                                     v = ret$v,
-                                     beta0 = ret$beta,
-                                     d = ret$d,
-                                     sigmaa2 = ret$epsa^2,
-                                     sigmay2 = ret$epsy^2,
-                                     n = n)) 
+  A_perp <- NULL
+  if(multi_rank) {
+    A_perp <- ret$multi_rank$A_perp
   }
-  sds <- c(sdx,sduv)
+  
+  sdxuv <- var_beta(X = ret$X, 
+                    u = ret$u, 
+                    v = ret$v, 
+                    beta0 = ret$beta, 
+                    d = ret$d[1], 
+                    sigmay2 = ret$epsy^2,
+                    sigmaa2 = ret$epsa^2, 
+                    n = n, 
+                    output = "uvX",
+                    method = ret$method,
+                    lambda = ret$l,
+                    multi_rank = multi_rank,
+                    multi_rank_ = ret$multi_rank,
+                    A_perp = A_perp)
+  
+  sds <- sqrt(sdxuv)
+  
+  # sduv <- sqrt(rate_betauv_two_stage(X = ret$X, 
+  #                                    u = ret$u, 
+  #                                    v = ret$v, 
+  #                                    beta0 = ret$beta, 
+  #                                    d = ret$d[1], 
+  #                                    sigmay2 = ret$epsy^2,
+  #                                    sigmaa2 = ret$epsa^2, 
+  #                                    n = n, 
+  #                                    output = ret$mode) )
+  # 
+  # # print(rate_betauv_two_stage_check(ret$X, 
+  # #                             ret$u, 
+  # #                             ret$v, 
+  # #                             ret$beta, 
+  # #                             ret$d, 
+  # #                             ret$epsa^2, 
+  # #                             ret$epsy^2,
+  # #                             n))
+  # if(k == 0) {
+  #   sdx <- NULL
+  # } else {
+  #   sdx <- sqrt(rate_betax_two_stage(X = ret$X, 
+  #                                    u = ret$u,
+  #                                    v = ret$v,
+  #                                    beta0 = ret$beta,
+  #                                    d = ret$d[1],
+  #                                    sigmaa2 = ret$epsa^2,
+  #                                    sigmay2 = ret$epsy^2,
+  #                                    n = n)) 
+  # }
+  # sds <- c(sdx,sduv)
+  
+  betahat <- betahat[betahat!=0]
   
   interval <- data.frame(
     lower = betahat - sds*qnorm(1-alpha/2),
@@ -734,18 +883,25 @@ confint <- function(ret, alpha = 0.05, ci = F) {
   pval <- 2*pnorm(-abs(tval))
   # pval <- 2*pt(-abs(tval), df = 3)
   
-  summmary_tbl <- data.frame(coef = betahat, 
-                             sds = sds, 
-                             t = tval, 
-                             p = pval)
-  x_names <- names(sdx)
-  if(is.null(x_names)) x_names <- paste0("x_", 1:k)
-  rownames(summmary_tbl) <- c(x_names, "u", "v")
+  summary_tbl <- data.frame(coef = betahat, 
+                            sds = sds, 
+                            t = tval, 
+                            p = pval)
+  # x_names <- names(sdx)
+  # if(is.null(x_names)) x_names <- paste0("x_", 1:k)
+  x_names <- paste0("x_", 1:k)
+  uv_names <- c("u", "v")
+  if(!is.null(ret$mode)) {
+    if(ret$mode == "u") uv_names <- "u"
+    if(ret$mode == "v") uv_names <- "v"
+  }
+  rownames(summary_tbl) <- c(x_names, uv_names)
   
   if(ci) {
-    return(interval)
+    return(list(summary_tbl = summary_tbl, 
+                interval = interval))
   } else {
-    return(summmary_tbl)
+    return(summary_tbl)
   }
 }
 
@@ -842,9 +998,11 @@ var_mat_A_two_stage <- function(sigmaa2, u, v, n) {
 #' Variance of \eqn{hat{a}_{ij}} ordered by column major
 #' 
 #' @param X design matrix X
-#' @param l tuning parameter
-#' @param sigmay2 sigma_y^2
-#' @param sigmaa2 sigma_a^2
+#' @param l tuning parameter \eqn{\lambda}
+#' @param d d
+#' @param beta0 $\beta = (\beta_x, \beta_u, \beta_v)$ vector
+#' @param sigmay2 \eqn{\sigma_y^2}
+#' @param sigmaa2 \eqn{\sigma_a^2}
 #' @param u u vector
 #' @param v v vector
 #' @param n number of nodes
@@ -1014,6 +1172,137 @@ rate_betauv_lr_2 <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n, l)
   diag(ret)
 }
 
+
+#' Variance of \eqn{hat{\beta_u}} and \eqn{hat{\beta_v}} ordered by column major
+#' 
+#' @param X design matrix X
+#' @param u u vector
+#' @param v v vector
+#' @param beta0 beta vector
+#' @param d d
+#' @param sigmay2 sigma_y^2
+#' @param sigmaa2 sigma_a^2
+#' @param n number of nodes
+#' @param output "uv", "u", "v" to select output for \eqn{beta_u} and/or \eqn{beta_v}
+#' @param verbose print first and second term of the rate 
+#' @return A vector of rariance for \eqn{hat{\beta_u}} and \eqn{hat{\beta_v}}
+var_beta <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n, 
+                     output = "uvX", method = "two_stage", verbose = F, 
+                     lambda = NA,
+                     multi_rank = F, multi_rank_ = NULL, A_perp = NULL) 
+{
+  
+  n <- nrow(X)
+  k <- ncol(X)
+  p <- length(beta0)
+  betau <- beta0[p-1]
+  betav <- beta0[p]
+  
+  I <- diag(1, nrow = n)
+  if(k == 0) {
+    Px <- diag(0, nrow = n)
+  } else { 
+    Px <- X %*% solve(t(X)%*%X) %*% t(X)
+  }
+  Pu <- u%*%t(u)/n
+  Pv <- v%*%t(v)/n
+  tu <- (I-Px) %*% u
+  tv <- (I-Px) %*% v  
+  
+  # (92)
+  Cuv <- matrix(c(t(tu)%*%tu, t(tu)%*%tv, t(tu)%*%tv, t(tv)%*%tv), nrow = 2)
+  Cuvi <- solve(Cuv)
+  
+  tuv <- rbind(t(tu), t(tv))
+  Cuviuv <- Cuvi %*% tuv
+  
+  # (93)
+  B1 <- Cuviuv
+  B1B1t <- B1 %*% t(B1)
+  
+  # (97)
+  AAt <- 1/(d^2*n)*(betau^2*(I-Pu) + betav^2*(I-Pv))
+  B2B2t <- Cuviuv %*% AAt %*% t(Cuviuv)
+  
+  betax_var <- rate_betax_two_stage(X, u, v, beta0, d, sigmay2, sigmaa2, n) 
+  
+  # W <- cbind(X, u, v)
+  # PXuv <- W %*% solve(t(W)%*%W) %*% t(W)
+  # tmp1=solve(lambda*d^2*I + betav^2 *(I-PXuv))
+  # tmp2 = I/(lambda*d^2 + betav^2) + betav^2/(lambda*d^2)*PXuv
+  # 
+  # tmp3 = (I - betav^2/(lambda*d^2 + betav^2)*(I-PXuv))/(lambda*d^2)
+  # 
+  # sum((tmp1 - tmp3)^2)
+  
+  # U_perp = multi_rank_$U_perp
+  # V_perp = multi_rank_$V_perp
+  # d_perp = multi_rank_$d_perp
+  # 
+  # K <- K.mat.sparse(n, n)
+  # M11 <- t(v) %x% (I-Pu)
+  # M12 <-  U_perp %*% diag(1/(1-d^2/d_perp^2)) %*% t(V_perp) %*% (t(v) %x% (I-Pu))
+  # M2 <-  U_perp %*% diag(d_perp/(1-d^2/d_perp^2)) %*% t(V_perp) %*% (t(u) %x% (I-Pv) %*% K)
+  # 
+  
+  if(multi_rank) {
+    
+    Cuviuv_betauv <- Cuviuv %*% cbind(-betau*I, -betav*I) 
+    
+    if(grepl("two_stage", method)) {
+      C11C21 <- matrix(0, nrow = 2*n, ncol = n)
+      C12C22 <- C12C22_two_stage(u = u, v = v, Pu = Pu, Pv = Pv, d = d, n = n, A_perp = A_perp)
+      
+      C31C41 <- Cuviuv
+    } else {
+      # SuperCENT
+      C11C21_C12C22 <- C11C21_C12C22_SuperCENT(X= X, u = u, v = v, Pu = Pu, Pv = Pv, 
+                                               betau = betau, betav = betav, d = d, n = n, lambda = lambda, A_perp = A_perp)
+      C11C21 <- C11C21_C12C22$C11C21_eps
+      C12C22 <- C11C21_C12C22$C12C22_vecE
+      
+      Cuviuv_betauvI <- cbind(Cuviuv_betauv, Cuviuv %*% I)
+      C31C41 <- Cuviuv_betauvI %*% rbind(C11C21, I) 
+      B1B1t <- C31C41 %*% t(C31C41)
+    }
+    
+    C32C42 <- Cuviuv_betauv %*% C12C22 
+    B2B2t <- C32C42 %*% t(C32C42)
+    
+    XtXi <- solve(t(X) %*% X)
+    uv <- cbind(u, v)
+    xxx <- XtXi%*%t(X)
+    xxx_betauv_uv <- xxx %*% cbind(-betau*I, -betav*I, u, v) 
+    
+    C51 <- cbind(xxx_betauv_uv, xxx) %*% rbind(C11C21, C31C41, I)
+    a1 <- sigmay2*(C51 %*% t(C51))
+    
+    C52 <- xxx_betauv_uv %*% rbind(C12C22, C32C42)
+    a2 <- sigmaa2*(C52 %*% t(C52))
+    
+    betax_var <- diag(a1 + a2)
+  }
+  
+  if(verbose) {
+    print(paste0("betau First term: ", sigmay2 * B1B1t[1,1]))
+    print(paste0("betau Second term: ", sigmaa2 * B2B2t[1,1]))
+    
+    print(paste0("betav First term: ", sigmay2 * B1B1t[2,2]))
+    print(paste0("betav Second term: ", sigmaa2 * B2B2t[2,2]))
+  }
+  
+  if(output == "uv") {
+    c(sigmay2 * B1B1t[1,1] + sigmaa2 * B2B2t[1,1], sigmay2 * B1B1t[2,2] + sigmaa2 * B2B2t[2,2])
+  } else if (output == "u") {
+    sigmay2 * B1B1t[1,1] + sigmaa2 * B2B2t[1,1]
+  } else if (output == "v") {
+    sigmay2 * B1B1t[2,2] + sigmaa2 * B2B2t[2,2]
+  } else if (output == "uvX") {
+    c(betax_var, sigmay2 * B1B1t[1,1] + sigmaa2 * B2B2t[1,1], sigmay2 * B1B1t[2,2] + sigmaa2 * B2B2t[2,2])
+  }
+}
+
+
 #' Variance of \eqn{hat{\beta_u}} and \eqn{hat{\beta_v}} ordered by column major
 #' 
 #' @param X design matrix X
@@ -1078,6 +1367,39 @@ rate_betauv_two_stage <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n,
   } else if (output == "v") {
     sigmay2 * B1B1t[2,2] + sigmaa2 * B2B2t[2,2]
   }
+}
+
+C12C22_two_stage  <- function(u, v, Pu, Pv, d, n, A_perp) {
+  
+  I <- diag(1, nrow = n)
+  K <- K.mat.sparse(n, n)
+  
+  mat1 <- rbind(cbind(n*d*I, -A_perp), cbind(t(-A_perp), n*d*I))
+  
+  s132 <- solve(mat1) %*% rbind(t(v)%x%(I-Pu), t(u)%x%(I-Pv)%*%K)
+  
+  s132
+  
+}
+
+C11C21_C12C22_SuperCENT  <- function(X, u, v, Pu, Pv, betau, betav, d, n, lambda, A_perp) {
+  
+  I <- diag(1, nrow = n)
+  K <- K.mat.sparse(n, n)
+  
+  mat0 <- lambda*d^2*diag(1, nrow = 2*n)
+  mat1 <- rbind(cbind(n*d*I, -A_perp), cbind(t(-A_perp), n*d*I))
+  
+  W <- cbind(X, u, v)
+  PXuv <- W %*% solve(t(W)%*%W) %*% t(W)
+  mat2 <- rbind(c(betau^2, betau*betav), c(betau*betav, betav^2)) %x% (I - PXuv)
+  
+  eps <- solve(lambda*d/n*mat1 + mat2) %*% rbind(betau*(I-PXuv), betav*(I-PXuv))
+  
+  vecE <- solve(lambda*d/n*mat1 + mat2) %*% (lambda*d/n*rbind(t(v)%x%(I-Pu), t(u)%x%(I-Pv)%*%K))
+  
+  return(list(C11C21_eps = eps, 
+              C12C22_vecE = vecE))
 }
 
 rate_betauv_two_stage_check <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n) 
