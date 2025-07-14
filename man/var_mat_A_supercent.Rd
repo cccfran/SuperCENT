@@ -9,15 +9,11 @@ var_mat_A_supercent(X, l, d, beta0, sigmay2, sigmaa2, u, v, n)
 \arguments{
 \item{X}{design matrix X}
 
-\item{l}{tuning parameter \eqn{\lambda}}
+\item{l}{tuning parameter}
 
-\item{d}{d}
+\item{sigmay2}{sigma_y^2}
 
-\item{beta0}{$\beta = (\beta_x, \beta_u, \beta_v)$ vector}
-
-\item{sigmay2}{\eqn{\sigma_y^2}}
-
-\item{sigmaa2}{\eqn{\sigma_a^2}}
+\item{sigmaa2}{sigma_a^2}
 
 \item{u}{u vector}
 

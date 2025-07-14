@@ -1,4 +1,25 @@
+#' Compute the Euclidean norm of a vector
+#'
+#' @param x A numeric vector
+#' @return The Euclidean norm \eqn{\|x\| = \sqrt{\sum x_i^2}}
+#' @examples 
+#' vec_norm(c(3, 4))  # returns 5
 vec_norm <- function(x) {sqrt(sum(x^2))}
+
+
+#' Spectral norm of the difference between outer products
+#' 
+#' Computes the spectral norm of the difference between the outer products of two vectors \eqn{x x^\top - y y^\top}.
+#' Optionally normalizes the vectors before computing the difference.
+#' 
+#' @param x A numeric vector
+#' @param y A numeric vector
+#' @param scale Logical; whether to normalize \code{x} and \code{y} to unit norm before computing outer products
+#' @return The spectral norm (largest singular value) of the difference between the two outer products
+#' @examples 
+#' x <- c(1, 2)
+#' y <- c(2, 4)
+#' spec_norm_diff(x, y)
 spec_norm_diff <- function(x, y, scale = T) {
   if(length(x) != length(y)) stop('x and y are of different length')
   if(length(x) != 1 & scale) {
@@ -15,6 +36,16 @@ spec_norm_diff <- function(x, y, scale = T) {
   # ret
 }
 
+#' Initialize a result object for network regression models
+#'
+#' Constructs an empty list with initialized slots for use in centrality-based regression procedures.
+#' 
+#' @param A The adjacency matrix
+#' @param X The design matrix
+#' @param y The response vector
+#' @return A list with initialized slots for centrality estimation, regression coefficients, and meta info
+#' @examples 
+#' ret <- ret_constructor(matrix(0, 2, 2), matrix(1, 2, 1), c(1, 2))
 ret_constructor <- function(A, X, y) {
   ret <- NULL
   
@@ -38,6 +69,23 @@ ret_constructor <- function(A, X, y) {
   ret
 }
 
+#' Experimental: Shift unobserved nodes in adjacency matrix (for semi-supervised estimation)
+#'
+#' As part of a semi-supervised estimation strategy, this function reorders the adjacency matrix
+#' such that observed nodes appear first and unobserved nodes (those with missing outcomes) 
+#' are shifted to the bottom-right block. This is useful for block-decomposable estimators or 
+#' conditional eigendecomposition techniques.
+#' 
+#' @param A A square adjacency matrix representing the network
+#' @param weights A logical vector of length equal to \code{nrow(A)} where \code{TRUE} indicates observed nodes and \code{FALSE} unobserved nodes
+#' @return A reordered adjacency matrix with unobserved nodes placed last
+#' @examples 
+#' A <- matrix(1:16, 4, 4)
+#' weights <- c(TRUE, TRUE, FALSE, FALSE)
+#' A_shift_unobserved_last(A, weights)
+#' 
+#' @seealso \code{\link{unobserved_shift_back}}
+#' @note This function is experimental and part of a semi-supervised network estimation feature.
 A_shift_unobserved_last <- function(A, weights) {
   
   n <- nrow(A)
@@ -55,6 +103,24 @@ A_shift_unobserved_last <- function(A, weights) {
   A
 }
 
+
+#' Experimental: Revert vector indexing after semi-supervised adjacency shift
+#'
+#' This function reverts the node indexing of any vector that was aligned with a shifted adjacency matrix
+#' (as produced by \code{A_shift_unobserved_last}). It is used to restore original order of node-level 
+#' quantities (e.g., eigenvectors, centrality scores) after estimation on the reordered matrix.
+#'
+#' @param xx A numeric vector aligned to the shifted adjacency matrix
+#' @param weights A logical vector used for the original shift (same as in \code{A_shift_unobserved_last})
+#' @return A numeric vector reordered back to match the original node indexing
+#' @examples 
+#' xx <- c(10, 20, 30, 40)
+#' weights <- c(TRUE, TRUE, FALSE, FALSE)
+#' unobserved_shift_back(xx, weights)
+#' 
+#' @seealso \code{\link{A_shift_unobserved_last}}
+#' @note This function is experimental and intended for semi-supervised learning pipelines where
+#' only a subset of nodes have observed responses.
 unobserved_shift_back <- function(xx, weights) {
   
   n <- length(xx)
@@ -187,6 +253,24 @@ two_stage <- function(A, X, y, r = 1, scaled = 1, mode = "uv", weights = rep(1, 
 }
 
 
+#' Estimate the optimal scaling parameter for latent confounding
+#'
+#' Computes the theoretically motivated scaling factor \eqn{\ell} that balances
+#' the contribution of latent confounding effects and observed noise. This is based 
+#' on a two-stage estimation of centralities and regression coefficients. The procedure 
+#' adjusts for the proportion of observed outcomes.
+#'
+#' @param A The adjacency matrix of the input network
+#' @param X The design matrix
+#' @param y The response vector
+#' @param weights A logical vector indicating which nodes have observed outcomes
+#' @param r The rank for low-rank approximation (default is 1)
+#' @param multi_rank Logical; whether to estimate \eqn{\sigma_a} using multiple singular values (default is \code{TRUE})
+#' 
+#' @return A numeric scalar \eqn{\ell}, representing the optimal scale for debiasing or penalization in downstream estimation
+#' 
+#' @examples
+#'
 lopt_estimate <- function(A, X, y, weights, r = 1, multi_rank = TRUE) {
   
   n <- length(y)
@@ -259,6 +343,8 @@ supercent <- function(A, X, y, l = NULL, tol = 1e-4, max_iter = 200, mode = "uv"
     A <- A_shift_unobserved_last(A_ori, weights)
   }
   
+  if(r == 1) multi_rank <- FALSE
+  
   if(is.null(l)) l <- lopt_estimate(A, X, y, weights, r = r, multi_rank = multi_rank)
   
   if(rand_int) {
@@ -295,7 +381,7 @@ supercent <- function(A, X, y, l = NULL, tol = 1e-4, max_iter = 200, mode = "uv"
     ret$multi_rank <- list(d_perp = d_perp/n,
                            U_perp = U_perp*sqrt(n),
                            V_perp = V_perp*sqrt(n),
-                           A_perp = U_perp %*% diag(d_perp) %*% t(V_perp))
+                           A_perp = U_perp %*% diag(d_perp, nrow = r-1) %*% t(V_perp))
     
   }
   
@@ -312,9 +398,28 @@ supercent <- function(A, X, y, l = NULL, tol = 1e-4, max_iter = 200, mode = "uv"
   ret
 }
 
-
+#' Experimental: Randomized initialization for SuperCENT optimization
+#'
+#' This function runs the \code{supercent} procedure multiple times with random initializations
+#' and returns the result that achieves the smallest final centrality estimation error.
+#' This can help mitigate poor local optima in non-convex estimation problems.
+#'
+#' @param A The adjacency matrix of the input network
+#' @param X The design matrix
+#' @param y The response vector
+#' @param l The regularization parameter (optional; if \code{NULL}, defaults are used internally)
+#' @param tol Convergence tolerance for stopping criterion (default \code{1e-4})
+#' @param max_iter Maximum number of iterations per run (default \code{200})
+#' @param weights A logical or numeric vector indicating which observations are used (default is all observed)
+#' @param verbose Verbosity level; \code{0} means silent, \code{1} prints convergence info (default \code{0})
+#' @param rand_times Number of random restarts to try (default \code{30})
+#' @param ... Additional arguments passed to \code{supercent}
+#'
+#' @return A \code{supercent} object corresponding to the best result (lowest final \code{u_distance})
+#'
+#' @examples
 rand.supercent <- function(A, X, y, l = NULL, tol = 1e-4, max_iter = 200, 
-                           weights = rep(1, length(y)), verbose = 0, rand_times = 30, ...) {
+                            weights = rep(1, length(y)), verbose = 0, rand_times = 30, ...) {
   
   ret <- NULL
   ret$obj <- 1e12
@@ -395,9 +500,11 @@ cv.supercent <- function(A, X, y,
   A_ori <- A
   if(n_obs < n) A <- A_shift_unobserved_last(A_ori, weights)
   
+  if(r == 1) multi_rank <- FALSE
+  
   if(is.null(l)) l <- lopt_estimate(A, X, y, weights, r = r, multi_rank = multi_rank)
   
-  lmin <- l/lrange
+  lmin <- l/lrange*(2^gap)
   # lmin <- l
   lmax <- l*lrange
   
@@ -432,7 +539,7 @@ cv.supercent <- function(A, X, y,
     ret$multi_rank <- list(d_perp = d_perp/n,
                            U_perp = U_perp*sqrt(n),
                            V_perp = V_perp*sqrt(n),
-                           A_perp = U_perp %*% diag(d_perp) %*% t(V_perp))
+                           A_perp = U_perp %*% diag(d_perp, nrow = r-1) %*% t(V_perp))
     
   }
   
@@ -449,6 +556,23 @@ cv.supercent <- function(A, X, y,
   ret
 }
 
+#' Adjust signs of centrality vectors and coefficients
+#'
+#' Resolves the sign ambiguity of estimated centrality vectors \code{u} and \code{v}
+#' by making the largest-magnitude entry positive, and adjusting associated 
+#' coefficients in \code{beta} accordingly.
+#'
+#' @details 
+#' The vectors \code{u}, \code{v} are only identifiable up to sign, but their products
+#' with covariates or coefficients (e.g., \eqn{u \cdot \hat{\beta}_u}) are uniquely identifiable.
+#' This adjustment ensures sign consistency across runs or for interpretation when needed.
+#'
+#' @param ret A network regression output
+#' @return The network regression output with consistently adjusted signs
+#'
+#' @examples 
+#' ret <- list(u = c(-2, -1), beta = c(1, -3))
+#' adjust_sign(ret)
 adjust_sign <- function(ret) {
   
   if(is.null(ret$v)) {
@@ -481,6 +605,47 @@ adjust_sign <- function(ret) {
   
   ret
 }
+
+#' Construct oracle output for network regression
+#'
+#' This function outputs an oracle estimator,
+#' where true centralities and regression coefficients are known.
+#' Useful for simulation studies and validation against estimated procedures.
+#'
+#' @param A The original adjacency matrix
+#' @param X The design matrix
+#' @param y The response vector
+#' @param d A vector of singular values (first entry used as primary rank)
+#' @param U Matrix of left singular vectors (e.g., true \code{u} basis)
+#' @param V Matrix of right singular vectors (e.g., true \code{v} basis)
+#' @param beta0vec The true regression coefficient vector
+#' @param beta_hat An estimated or debiased coefficient vector
+#' @param epsa The true or estimated latent noise level for \code{A}
+#' @param epsy The true or estimated noise level for \code{y}
+#' @param A_hat A possibly denoised version of \code{A}
+#' @param l The optimal or chosen regularization parameter
+#' @param weights Logical vector indicating observed outcomes
+#' @param method A character string indicating the estimation method name
+#' @param multi_rank Logical; whether to include orthogonal components beyond rank-1
+#' @param U_perp Orthogonal left singular vectors (if \code{multi_rank = TRUE})
+#' @param V_perp Orthogonal right singular vectors (if \code{multi_rank = TRUE})
+#' @param d_perp Singular values for orthogonal components (if \code{multi_rank = TRUE})
+#'
+#' @return A list with all inputs stored, and derived quantities such as residuals and low-rank components included
+#'
+#' @examples 
+#' n <- 100; p <- 3
+#' A <- matrix(rnorm(n^2), n)
+#' X <- matrix(rnorm(n * p), n, p)
+#' y <- rnorm(n)
+#' U <- matrix(rnorm(n), n); V <- matrix(rnorm(n), n)
+#' beta0vec <- runif(p + 2)
+#' oracle(A, X, y, d = 1, U, V, beta0vec, beta_hat = beta0vec,
+#'        epsa = 1, epsy = 0.1, A_hat = A, weights = rep(TRUE, n),
+#'        method = "oracle", multi_rank = FALSE)
+#'
+#' @seealso \code{\link{ret_constructor}}, \code{\link{supercent}}, \code{\link{adjust_sign}}
+#' @note This is intended primarily for simulation benchmarking and evaluation.
 
 oracle <- function(A, X, y, d, U, V, beta0vec, beta_hat, epsa, epsy,
                    A_hat, l = NA,
@@ -526,6 +691,22 @@ oracle <- function(A, X, y, d, U, V, beta0vec, beta_hat, epsa, epsy,
   ret
 }
 
+#' Predict outcomes using two-stage network regression
+#'
+#' Applies the estimated coefficients from a two-stage network regression model to test data.
+#'
+#' @param A Full adjacency matrix containing both training and test nodes
+#' @param X_test Covariate matrix for the test set
+#' @param ret_two_stage A fitted object from \code{two_stage()}
+#' @param scaled Logical; whether to scale test singular vectors to match training norm (default \code{TRUE})
+#'
+#' @return A list with predicted outcomes \code{y}, test centralities \code{u} and \code{v}
+#'
+#' @examples
+#' # Assume last 20 rows/cols of A correspond to test nodes
+#' pred <- predict_two_stage(A, X_test, ret)
+#'
+#' @seealso \code{\link{two_stage}}, \code{\link{predict_supervised}}
 predict_two_stage <- function(A, X_test, ret_two_stage, scaled = 1) {
   N <- nrow(A)
   n_test <- nrow(X_test)
@@ -545,7 +726,23 @@ predict_two_stage <- function(A, X_test, ret_two_stage, scaled = 1) {
   pred_two_stage
 }
 
-# redundant
+
+#' Predict using known centrality in two-stage model (oracle)
+#'
+#' Computes predictions using provided \code{u_test}, \code{v_test}.
+#' Intended for oracle evaluation or simulation studies where ground truth is available.
+#'
+#' @param A Adjacency matrix (not used in this version, included for interface compatibility)
+#' @param X_test Covariate matrix for the test set
+#' @param ret_two_stage A fitted object from \code{two_stage()}
+#' @param u_test Known test centrality vector (left)
+#' @param v_test Known test centrality vector (right)
+#' @param scaled Logical; ignored in current version (included for compatibility)
+#'
+#' @return A list with predicted outcomes \code{y}, and given \code{u}, \code{v}
+#'
+#' @note This is a redundant oracle version assuming known latent factors
+#' @seealso \code{\link{predict_two_stage}}, \code{\link{oracle}}
 predict_two_stage_oracle <- function(A, X_test, ret_two_stage, u_test, v_test, scaled = 1) {
   pred_two_stage <- NULL
   pred_two_stage$y <- cbind(X_test, u_test, v_test) %*% ret_two_stage$beta
@@ -617,6 +814,14 @@ K.mat.sparse <- function(m, n)
   return(x)
 }
 
+#' Align signs of estimated coefficients with ground truth
+#'
+#' @param beta Estimated coefficient vector
+#' @param beta0 Ground truth or reference coefficient vector
+#' @return The input \code{beta} with signs aligned to \code{beta0} for the last two entries
+#'
+#' @examples
+#' beta_sign(c(1, -2, -3), c(1, -2, 3))  # flips last entry
 beta_sign <- function(beta, beta0)
 {
   p <- length(beta0)
@@ -626,6 +831,14 @@ beta_sign <- function(beta, beta0)
   beta
 }
 
+#' Align sign of estimated centrality with ground truth
+#'
+#' @param u Estimated latent vector
+#' @param u0 Ground truth or reference latent vector
+#' @return The input \code{u} with aligned sign
+#'
+#' @examples
+#' u_sign(c(-1, -2), c(1, 2))  # flips sign
 u_sign <- function(u, u0)
 {
   sgn <- sign(c(t(u0)%*%u))
@@ -634,6 +847,16 @@ u_sign <- function(u, u0)
   u
 }
 
+#' Align signs of full network regression output with ground truth
+#'
+#'
+#' @param ret A result object from \code{supercent}, \code{two_stage}, or similar
+#' @param beta0vec Reference coefficient vector
+#' @param u0 Reference left latent vector
+#' @param v0 Reference right latent vector
+#' @return The input \code{ret} with aligned \code{u}, \code{v}, \code{beta}, and optionally \code{beta_hat}
+#'
+#' @seealso \code{\link{beta_sign}}, \code{\link{u_sign}}, \code{\link{adjust_sign}}
 ret_sign <- function(ret, beta0vec, u0, v0)
 {
   if(!is.null(ret$beta_hat)) ret$beta_hat <- beta_sign(ret$beta_hat, beta0vec)
@@ -644,19 +867,20 @@ ret_sign <- function(ret, beta0vec, u0, v0)
   ret
 }
 
-#' Calculate variance
+#' Variance estimation for network regression parameters
 #' 
-#' @param X_train X train matrix
-#' @param beta_u \eqn{\beta_u}
-#' @param beta_v \eqn{\beta_v}
-#' @param d d
-#' @param u u
-#' @param v v
-#' @param epsa2 \eqn{\epsilon_a^2}
-#' @param epsy2 \eqn{\epsilon_y^2}
-#' @param l \eqn{\lambda}
-#' @param method two_stage or lr (SuperCENT)
-#' @return variance of hat u,v,betax, betau, betav
+#' @param X_train Covariate matrix for observed nodes
+#' @param beta_u Estimated coefficient on centrality \code{u}
+#' @param beta_v Estimated coefficient on centrality \code{v}
+#' @param d Estimated leading singular value
+#' @param u Estimated centrality vector (left)
+#' @param v Estimated centrality vector (right)
+#' @param epsa2 Estimated noise variance in the network (\code{A})
+#' @param epsy2 Estimated noise variance in the outcome (\code{y})
+#' @param l Regularization parameter (optional, used in low-rank models)
+#' @param method Estimation method, one of \code{"lr"} ) (SuperCENT) or \code{"two_stage"}
+#'
+#' @return A numeric vector of estimated variances for \code{u}, \code{v}, \code{beta_u}, \code{beta_v}, and \code{beta_x}
 var_mat <- function(X_train, beta_u, beta_v, d, u, v, epsa2, epsy2, l = NULL, method = "lr")
 {
   n <- nrow(X_train)
@@ -728,6 +952,17 @@ var_mat <- function(X_train, beta_u, beta_v, d, u, v, epsa2, epsy2, l = NULL, me
   vars[c(1:2*n, (2*n+3):length(vars), (2*n+1), (2*n+2))]
 }
 
+#' Confidence intervals for all network regression parameters
+#'
+#' Computes standard errors, test statistics, and p-values for estimated centrality components 
+#' (\code{u}, \code{v}) and regression coefficients.
+#'
+#' @param ret A fitted network regression object (e.g., from \code{supercent})
+#' @param alpha Confidence level (default \code{0.05})
+#' @param method Estimation method used, one of \code{"lr"} or \code{"two_stage"}
+#'
+#' @return A data frame with parameter estimates, standard errors, t-statistics, and p-values
+#' @seealso \code{\link{var_mat}}, \code{\link{epsa_hat}}, \code{\link{epsy_hat}}
 confint_all <- function(ret, alpha = 0.05, method = "lr") {
   n <- length(ret$y)
   p <- ncol(ret$X)
@@ -764,11 +999,32 @@ confint_all <- function(ret, alpha = 0.05, method = "lr") {
   summmary_tbl
 }
 
+#' Legacy: Oracle estimate of network noise level
+#'
+#' Computes \eqn{\epsilon_a} using ground truth \code{A0} and the fitted rank-1 structure from \code{u}, \code{v}, \code{d}.
+#'
+#' @param A0 True adjacency matrix
+#' @param d Leading singular value
+#' @param u Estimated centrality vector (left)
+#' @param v Estimated centrality vector (right)
+#'
+#' @return Oracle estimate of \eqn{\epsilon_a}
 epsa_hat_oracle <- function(A0, d, u, v) {
   n <- length(u)
   sqrt(sum((d * u%*%t(v) - A0)^2)/(n^2-1))
 }
 
+
+#' Estimate \eqn{\sigma_a}
+#'
+#' Computes the standard deviation of residual noise in \code{A}
+#'
+#' @param ret A fitted network regression object
+#' @param multi_rank Logical; include additional low-rank structure if available (default \code{TRUE})
+#'
+#' @return Estimated \eqn{\sigma_a}
+#'
+#' @seealso \code{\link{epsa_hat_oracle}}, \code{\link{epsy_hat}}
 epsa_hat <- function(ret, multi_rank = TRUE) {
   n <- length(ret$u)
   if(!is.null(ret$v)) {
@@ -786,6 +1042,15 @@ epsa_hat <- function(ret, multi_rank = TRUE) {
   sqrt(epsa2)
 }
 
+#' Estimate \eqn{\sigma_y}
+#'
+#' Computes the residual standard error \eqn{\epsilon_y}.
+#'
+#' @param ret A fitted network regression object
+#'
+#' @return Estimated \eqn{\epsilon_y}
+#'
+#' @seealso \code{\link{epsa_hat}}, \code{\link{confint_all}}
 epsy_hat <- function(ret) {
   n <- length(ret$residuals)
   p <- length(ret$beta)
@@ -884,9 +1149,9 @@ confint <- function(ret, alpha = 0.05, ci = F, multi_rank = F) {
   # pval <- 2*pt(-abs(tval), df = 3)
   
   summary_tbl <- data.frame(coef = betahat, 
-                            sds = sds, 
-                            t = tval, 
-                            p = pval)
+                             sds = sds, 
+                             t = tval, 
+                             p = pval)
   # x_names <- names(sdx)
   # if(is.null(x_names)) x_names <- paste0("x_", 1:k)
   x_names <- paste0("x_", 1:k)
@@ -998,11 +1263,9 @@ var_mat_A_two_stage <- function(sigmaa2, u, v, n) {
 #' Variance of \eqn{hat{a}_{ij}} ordered by column major
 #' 
 #' @param X design matrix X
-#' @param l tuning parameter \eqn{\lambda}
-#' @param d d
-#' @param beta0 $\beta = (\beta_x, \beta_u, \beta_v)$ vector
-#' @param sigmay2 \eqn{\sigma_y^2}
-#' @param sigmaa2 \eqn{\sigma_a^2}
+#' @param l tuning parameter
+#' @param sigmay2 sigma_y^2
+#' @param sigmaa2 sigma_a^2
 #' @param u u vector
 #' @param v v vector
 #' @param n number of nodes
@@ -1077,13 +1340,23 @@ var_mat_A_supercent <- function(X, l, d, beta0, sigmay2, sigmaa2, u, v, n) {
   return(sigmay2*h1 + sigmaa2*(h2+h3+h4+h5+h23+h32+h24+h42+h34+h43))
 }
 
-f1 <- function(l, d, beta0, sigmay2, sigmaa2, u, v, n) {
-  p <- length(beta0)
-  betau <- beta0[p-1]
-  betav <- beta0[p]
-  (2*l*d^2 + betau^2 + betav^2)/n/d^2
-}
+# f1 <- function(l, d, beta0, sigmay2, sigmaa2, u, v, n) {
+#   p <- length(beta0)
+#   betau <- beta0[p-1]
+#   betav <- beta0[p]
+#   (2*l*d^2 + betau^2 + betav^2)/n/d^2
+# }
 
+#' Rate of centrality \eqn{\hat{u}} of SuperCENT under rank-one model
+#'
+#' @param l Regularization parameter
+#' @param d Leading singular value
+#' @param beta0 True coefficient vector, with \code{beta_u} and \code{beta_v} as last two entries
+#' @param sigmay2 Variance of outcome noise
+#' @param sigmaa2 Variance of network noise
+#' @param n Sample size
+#'
+#' @return SuperCENT rate of \eqn{\hat{u}}
 rate_u_lr <- function(l, d, beta0, sigmay2, sigmaa2, n) 
 {
   p <- length(beta0)
@@ -1097,11 +1370,30 @@ rate_u_lr <- function(l, d, beta0, sigmay2, sigmaa2, n)
   (two_stage + s1*s2)
 }
 
+#' Rate of \eqn{\hat{u}} of two-stage estimator under rank-one model
+#'
+#'
+#' @param d Leading singular value
+#' @param sigmaa2 Variance of network noise
+#' @param n Sample size
+#' @return Two-stage rate of \eqn{\hat{u}}
 rate_u_two_stage <- function(d, sigmaa2, n) 
 {
   sigmaa2/d^2*(1-1/n)
 }
 
+#' Optimal \eqn{\lambda} for SuperCENT
+#'
+#' Computes the theoretical  optimal value of \eqn{\lambda}.
+#'
+#' @param d Leading singular value
+#' @param beta0 True coefficient vector
+#' @param sigmay2 Regression noise variance
+#' @param sigmaa2 Network noise variance
+#' @param n Total sample size
+#' @param weights Observation indicator vector
+#'
+#' @return Optimal regularization parameter \eqn{\lambda}
 l_optimal_lr <- function(d, beta0, sigmay2, sigmaa2, n, weights = rep(1, n)) 
 {
   n_obs <- sum(weights == 1)
@@ -1113,32 +1405,20 @@ l_optimal_lr <- function(d, beta0, sigmay2, sigmaa2, n, weights = rep(1, n))
   n*sigmay2/sigmaa2*n/n_obs
 }
 
-rate_betau_two_stage <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n) 
-{
-  print("there is an error. Do NOT use")
-  n <- nrow(X)
-  p <- length(beta0)
-  betau <- beta0[p-1]
-  betav <- beta0[p]
-  
-  I <- diag(1, nrow = n)
-  Px <- X %*% solve(t(X)%*%X) %*% t(X)
-  Pu <- u%*%t(u)/n
-  Pv <- v%*%t(v)/n
-  tu <- (I-Px) %*% u
-  tv <- (I-Px) %*% v  
-  c <- as.numeric(t(tu)%*%tu%*%t(tv)%*%tv - (t(tu)%*%tv)^2)
-  
-  a1 <- sigmay2/c*as.numeric(t(tv)%*%tv)
-  
-  b1 <- as.numeric(betav^2*t(tv)%*%tv%*%t(tu)%*%(I-Pv)%*%tu%*%t(tv)%*%tv)
-  b2 <- as.numeric(betau^2*t(tu)%*%tv%*%t(tv)%*%(I-Pu)%*%tv%*%t(tu)%*%tv)
-  a2 <- sigmaa2/c^2/d^2/n*(b1 + b2)
-  
-  a1 + a2
-}
 
-
+#' Rate of \code{beta_u} and \code{beta_v} of SuperCENT under rank-one
+#'
+#' @param X Covariate matrix
+#' @param u Estimated centrality vector (left)
+#' @param v Estimated centrality vector (right)
+#' @param beta0 True coefficient vector (with \code{beta_u}, \code{beta_v} as last entries)
+#' @param d Leading singular value
+#' @param sigmay2 Outcome noise variance
+#' @param sigmaa2 Network noise variance
+#' @param n Sample size
+#' @param l Regularization parameter
+#'
+#' @return Rate of \code{beta_u} and \code{beta_v} of SuperCENT 
 rate_betauv_lr_2 <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n, l) 
 {
   if(n>100) {stop("n too big for K matrix")}
@@ -1369,6 +1649,19 @@ rate_betauv_two_stage <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n,
   }
 }
 
+#' Compute C12 and C22 blocks for two-stage variance-covariance matrix
+#'
+#' @param u u vector
+#' @param v v vector
+#' @param Pu Projection matrix onto \code{u}, typically \code{u \%*\% t(u) / n}
+#' @param Pv Projection matrix onto \code{v}
+#' @param d Leading singular value
+#' @param n Number of nodes
+#' @param A_perp Residual adjacency matrix from multi-rank approximation (if any)
+#'
+#' @return A matrix representing \eqn{C_{12}} and \eqn{C_{22}} stacked vertically
+#'
+#' @seealso \code{\link{C11C21_C12C22_SuperCENT}}
 C12C22_two_stage  <- function(u, v, Pu, Pv, d, n, A_perp) {
   
   I <- diag(1, nrow = n)
@@ -1382,6 +1675,27 @@ C12C22_two_stage  <- function(u, v, Pu, Pv, d, n, A_perp) {
   
 }
 
+#' Compute C11, C21, C12, C22 blocks for SuperCENT variance-covariance matrix
+#'
+#' @param X Covariate matrix
+#' @param u u vector
+#' @param v v vector
+#' @param Pu Projection matrix onto \code{u}
+#' @param Pv Projection matrix onto \code{v}
+#' @param betau Coefficient on centrality vector \code{u}
+#' @param betav Coefficient on centrality vector \code{v}
+#' @param d Leading singular value
+#' @param n Number of nodes
+#' @param lambda Regularization parameter
+#' @param A_perp Residual component from multi-rank approximation (optional)
+#'
+#' @return A list with:
+#' \describe{
+#'   \item{\code{C11C21_eps}}{Influence term from response noise \eqn{\epsilon_y}}
+#'   \item{\code{C12C22_vecE}}{Influence term from network noise \eqn{\epsilon_a}}
+#' }
+#'
+#' @seealso \code{\link{C12C22_two_stage}}, \code{\link{rate_betauv_lr_2}}
 C11C21_C12C22_SuperCENT  <- function(X, u, v, Pu, Pv, betau, betav, d, n, lambda, A_perp) {
   
   I <- diag(1, nrow = n)
@@ -1402,6 +1716,18 @@ C11C21_C12C22_SuperCENT  <- function(X, u, v, Pu, Pv, betau, betav, d, n, lambda
               C12C22_vecE = vecE))
 }
 
+#' Debugging check for variance of \eqn{\\hat{\\beta}_u} in two-stage estimator
+#'
+#' @param X Covariate matrix
+#' @param u u vector
+#' @param v v vector
+#' @param beta0 True coefficient vector
+#' @param d Leading singular value
+#' @param sigmay2 Outcome noise variance
+#' @param sigmaa2 Network noise variance
+#' @param n Sample size
+#'
+#' @return A list of intermediate terms including total rate, signal and network variance terms, and key scalars
 rate_betauv_two_stage_check <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n) 
 {
   # check (305) = (311) = (312)
@@ -1447,6 +1773,20 @@ rate_betauv_two_stage_check <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n)
   
 }
 
+#' Asymptotic variance of \eqn{\\hat{\\beta}_x} under two-stage 
+#'
+#' @param X Covariate matrix
+#' @param u u vector
+#' @param v v vector
+#' @param beta0 True coefficient vector
+#' @param d Leading singular value
+#' @param sigmay2 Outcome noise variance
+#' @param sigmaa2 Network noise variance
+#' @param n Sample size
+#'
+#' @return A vector of variances for each component of \eqn{\\hat{\\beta}_x}
+#'
+#' @seealso \code{\link{rate_betax_lr}}
 rate_betax_two_stage <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n) 
 {
   n <- nrow(X)
@@ -1478,6 +1818,20 @@ rate_betax_two_stage <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n)
   diag(a1 + a2)
 }
 
+#' Asymptotic variance of \eqn{\\hat{\\beta}_x} under SuperCENT estimator
+#'
+#' @param X Covariate matrix
+#' @param u u vector
+#' @param v v vector
+#' @param beta0 True coefficient vector
+#' @param d Leading singular value
+#' @param sigmay2 Outcome noise variance
+#' @param sigmaa2 Network noise variance
+#' @param n Sample size
+#'
+#' @return A vector of variances for each component of \eqn{\\hat{\\beta}_x}
+#'
+#' @seealso \code{\link{rate_betax_two_stage}}
 rate_betax_lr <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n) 
 {
   n <- nrow(X)
@@ -1509,6 +1863,18 @@ rate_betax_lr <- function(X, u, v, beta0, d, sigmay2, sigmaa2, n)
   diag(a1 + a2)
 }
 
+
+#' Helper: Common penalty term in SuperCENT risk expression
+#'
+#' @param l Regularization parameter
+#' @param d Leading singular value
+#' @param betau Coefficient on \code{u}
+#' @param betav Coefficient on \code{v}
+#' @param sigmay2 Outcome noise variance
+#' @param sigmaa2 Network noise variance
+#' @param n Sample size
+#'
+#' @return The combined penalty term used in risk difference expressions
 func <- function(l, d, betau, betav, sigmay2, sigmaa2, n) 
 {
   common <- (betau^2 + betav^2)*(2*l*d^2 + betau^2 + betav^2)/(l*d^2 + betau^2 + betav^2)^2
@@ -1518,6 +1884,15 @@ func <- function(l, d, betau, betav, sigmay2, sigmaa2, n)
   a1+a2
 }
 
+#' Asymptotic prediction risk under two-stage network regression
+#'
+#' @param beta0 True coefficient vector
+#' @param d Leading singular value
+#' @param sigmay2 Outcome noise variance
+#' @param sigmaa2 Network noise variance
+#' @param n Sample size
+#'
+#' @return Risk value
 rate_risk_two_stage <- function(beta0, d, sigmay2, sigmaa2, n)
 {
   p <- length(beta0)
@@ -1527,6 +1902,20 @@ rate_risk_two_stage <- function(beta0, d, sigmay2, sigmaa2, n)
   (n-p-3) * (sigmay2 + sigmaa2/(d^2*n)*(betau^2 + betav^2))
 }
 
+#' Asymptotic prediction risk under SuperCENT
+#'
+#' @param l Regularization parameter
+#' @param u u vector
+#' @param v v vector
+#' @param beta0 True coefficient vector
+#' @param d Leading singular value
+#' @param sigmay2 Outcome noise variance
+#' @param sigmaa2 Network noise variance
+#' @param n Sample size
+#'
+#' @return Scalar risk value for SuperCENT
+#'
+#' @seealso \code{\link{rate_risk_two_stage}}
 rate_risk_lr <- function(l, u, v, beta0, d, sigmay2, sigmaa2, n)
 {
   p <- length(beta0)
@@ -1539,11 +1928,31 @@ rate_risk_lr <- function(l, u, v, beta0, d, sigmay2, sigmaa2, n)
   rate_risk_two_stage(beta0, d, sigmay2, sigmaa2, n) - first_multiplier*second_multiplier
 }
 
+#' Expected squared error of adjacency matrix recovery under two-stage
+#'
+#' @param sigmaa2 Network noise variance
+#' @param n Sample size
+#'
+#' @return Square error
 rate_A_two_stage <- function(sigmaa2, n)
 {
   sigmaa2 * (2*n - 1)
 }
 
+#' Expected squared error of adjacency matrix recovery under SuperCENT
+#'
+#' @param l Regularization parameter
+#' @param u u vector
+#' @param v v vector
+#' @param beta0 True coefficient vector
+#' @param d Leading singular value
+#' @param sigmay2 Outcome noise variance
+#' @param sigmaa2 Network noise variance
+#' @param n Sample size
+#'
+#' @return Square error
+#'
+#' @seealso \code{\link{rate_A_two_stage}}
 rate_A_lr <- function(l, u, v, beta0, d, sigmay2, sigmaa2, n) 
 {
   p <- length(beta0)
@@ -1559,6 +1968,32 @@ rate_A_lr <- function(l, u, v, beta0, d, sigmay2, sigmaa2, n)
   return(first_term + sec_term + third_term)
 }
 
+
+#' Experimental: Subsample-based confidence intervals for network regression
+#'
+#' Implements HULC confidence intervals (Kuchibhotla et al., 2021)
+#' for regression coefficients in network regression models. The procedure resamples
+#' blocks from the training set and refits the model multiple times using a user-defined estimator.
+#'
+#' @param A_train Adjacency matrix for training nodes
+#' @param X_train Covariate matrix for training nodes
+#' @param y_train Response vector for training nodes
+#' @param B Number of subsample blocks (default \code{5})
+#' @param FUN Estimator function (e.g., \code{supercent}) that returns a list with element \code{beta}
+#' @param ... Additional arguments passed to \code{FUN} (e.g., \code{l}, \code{lrange}, \code{gap}, \code{folds}, \code{max_iter})
+#'
+#' @return A matrix of lower and upper bounds for each coefficient in \code{beta}, including centrality effects
+#'
+#' @details
+#' Each subsample block fits a model on a subset of the training data and extracts the estimated coefficients.
+#' The final interval is formed by taking the componentwise minimum and maximum across all subsample fits.
+#'
+#' @note Assumes \code{beta0vec} is available in the environment to align signs via \code{beta_sign()}.
+#'
+#' @seealso \code{\link{beta_sign}}, \code{\link{confint_all}}
+#'
+#' @examples
+#' # hulc(A_train, X_train, y_train, FUN = supercent, B = 5, l = 0.1)
 hulc <- function(A_train, X_train, y_train, B = 5, FUN, ...) {
   
   input_list <- list(...)

@@ -2,7 +2,7 @@
 % Please edit documentation in R/utilities.R
 \name{var_mat}
 \alias{var_mat}
-\title{Calculate variance}
+\title{Variance estimation for network regression parameters}
 \usage{
 var_mat(
   X_train,
@@ -18,29 +18,29 @@ var_mat(
 )
 }
 \arguments{
-\item{X_train}{X train matrix}
+\item{X_train}{Covariate matrix for observed nodes}
 
-\item{beta_u}{\eqn{\beta_u}}
+\item{beta_u}{Estimated coefficient on centrality \code{u}}
 
-\item{beta_v}{\eqn{\beta_v}}
+\item{beta_v}{Estimated coefficient on centrality \code{v}}
 
-\item{d}{d}
+\item{d}{Estimated leading singular value}
 
-\item{u}{u}
+\item{u}{Estimated centrality vector (left)}
 
-\item{v}{v}
+\item{v}{Estimated centrality vector (right)}
 
-\item{epsa2}{\eqn{\epsilon_a^2}}
+\item{epsa2}{Estimated noise variance in the network (\code{A})}
 
-\item{epsy2}{\eqn{\epsilon_y^2}}
+\item{epsy2}{Estimated noise variance in the outcome (\code{y})}
 
-\item{l}{\eqn{\lambda}}
+\item{l}{Regularization parameter (optional, used in low-rank models)}
 
-\item{method}{two_stage or lr (SuperCENT)}
+\item{method}{Estimation method, one of \code{"lr"} ) (SuperCENT) or \code{"two_stage"}}
 }
 \value{
-variance of hat u,v,betax, betau, betav
+A numeric vector of estimated variances for \code{u}, \code{v}, \code{beta_u}, \code{beta_v}, and \code{beta_x}
 }
 \description{
-Calculate variance
+Variance estimation for network regression parameters
 }
